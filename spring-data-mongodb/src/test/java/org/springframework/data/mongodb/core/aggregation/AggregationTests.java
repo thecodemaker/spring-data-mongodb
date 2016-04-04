@@ -64,10 +64,9 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import com.mongodb.BasicDBObject;
-import com.mongodb.CommandResult;
-import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.MongoException;
+import com.mongodb.client.MongoCollection;
 import com.mongodb.util.JSON;
 
 /**
@@ -109,7 +108,7 @@ public class AggregationTests {
 	private void queryMongoVersionIfNecessary() {
 
 		if (mongoVersion == null) {
-			CommandResult result = mongoTemplate.executeCommand("{ buildInfo: 1 }");
+			DBObject result = mongoTemplate.executeCommand("{ buildInfo: 1 }");
 			mongoVersion = Version.parse(result.get("version").toString());
 		}
 	}
@@ -149,14 +148,14 @@ public class AggregationTests {
 			mongoTemplate.execute(ZipInfo.class, new CollectionCallback<Void>() {
 
 				@Override
-				public Void doInCollection(DBCollection collection) throws MongoException, DataAccessException {
+				public Void doInCollection(MongoCollection<DBObject> collection) throws MongoException, DataAccessException {
 
 					Scanner scanner = null;
 					try {
 						scanner = new Scanner(new BufferedInputStream(new ClassPathResource("zips.json").getInputStream()));
 						while (scanner.hasNextLine()) {
 							String zipInfoRecord = scanner.nextLine();
-							collection.save((DBObject) JSON.parse(zipInfoRecord));
+							collection.insertOne((DBObject) JSON.parse(zipInfoRecord));
 						}
 					} catch (Exception e) {
 						if (scanner != null) {
@@ -550,11 +549,12 @@ public class AggregationTests {
 		assertThat((Double) resultList.get(0).get("netPriceMul2"), is(product.netPrice * 2));
 		assertThat((Double) resultList.get(0).get("netPriceDiv119"), is(product.netPrice / 1.19));
 		assertThat((Integer) resultList.get(0).get("spaceUnitsMod2"), is(product.spaceUnits % 2));
-		assertThat((Integer) resultList.get(0).get("spaceUnitsPlusSpaceUnits"), is(product.spaceUnits + product.spaceUnits));
+		assertThat((Integer) resultList.get(0).get("spaceUnitsPlusSpaceUnits"),
+				is(product.spaceUnits + product.spaceUnits));
 		assertThat((Integer) resultList.get(0).get("spaceUnitsMinusSpaceUnits"),
 				is(product.spaceUnits - product.spaceUnits));
-		assertThat((Integer) resultList.get(0).get("spaceUnitsMultiplySpaceUnits"), is(product.spaceUnits
-				* product.spaceUnits));
+		assertThat((Integer) resultList.get(0).get("spaceUnitsMultiplySpaceUnits"),
+				is(product.spaceUnits * product.spaceUnits));
 		assertThat((Double) resultList.get(0).get("spaceUnitsDivideSpaceUnits"),
 				is((double) (product.spaceUnits / product.spaceUnits)));
 		assertThat((Integer) resultList.get(0).get("spaceUnitsModSpaceUnits"), is(product.spaceUnits % product.spaceUnits));
@@ -643,8 +643,8 @@ public class AggregationTests {
 		DBObject firstItem = resultList.get(0);
 		assertThat((String) firstItem.get("_id"), is(product.id));
 		assertThat((String) firstItem.get("name"), is(product.name));
-		assertThat((Double) firstItem.get("salesPrice"), is((product.netPrice * (1 - product.discountRate) + shippingCosts)
-				* (1 + product.taxRate)));
+		assertThat((Double) firstItem.get("salesPrice"),
+				is((product.netPrice * (1 - product.discountRate) + shippingCosts) * (1 + product.taxRate)));
 	}
 
 	@Test
@@ -666,7 +666,7 @@ public class AggregationTests {
 
 	/**
 	 * @see DATAMONGO-753
-	 * @see http 
+	 * @see http
 	 *      ://stackoverflow.com/questions/18653574/spring-data-mongodb-aggregation-framework-invalid-reference-in-group
 	 *      -operati
 	 */
@@ -696,7 +696,7 @@ public class AggregationTests {
 
 	/**
 	 * @see DATAMONGO-753
-	 * @see http 
+	 * @see http
 	 *      ://stackoverflow.com/questions/18653574/spring-data-mongodb-aggregation-framework-invalid-reference-in-group
 	 *      -operati
 	 */
@@ -731,12 +731,13 @@ public class AggregationTests {
 		data.stringValue = "ABC";
 		mongoTemplate.insert(data);
 
-		TypedAggregation<Data> agg = newAggregation(Data.class, project() //
-				.andExpression("concat(stringValue, 'DE')").as("concat") //
-				.andExpression("strcasecmp(stringValue,'XYZ')").as("strcasecmp") //
-				.andExpression("substr(stringValue,1,1)").as("substr") //
-				.andExpression("toLower(stringValue)").as("toLower") //
-				.andExpression("toUpper(toLower(stringValue))").as("toUpper") //
+		TypedAggregation<Data> agg = newAggregation(Data.class,
+				project() //
+						.andExpression("concat(stringValue, 'DE')").as("concat") //
+						.andExpression("strcasecmp(stringValue,'XYZ')").as("strcasecmp") //
+						.andExpression("substr(stringValue,1,1)").as("substr") //
+						.andExpression("toLower(stringValue)").as("toLower") //
+						.andExpression("toUpper(toLower(stringValue))").as("toUpper") //
 		);
 
 		AggregationResults<DBObject> results = mongoTemplate.aggregate(agg, DBObject.class);
@@ -762,17 +763,18 @@ public class AggregationTests {
 		data.dateValue = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss.SSSZ").parse("29.08.1983 12:34:56.789+0000");
 		mongoTemplate.insert(data);
 
-		TypedAggregation<Data> agg = newAggregation(Data.class, project() //
-				.andExpression("dayOfYear(dateValue)").as("dayOfYear") //
-				.andExpression("dayOfMonth(dateValue)").as("dayOfMonth") //
-				.andExpression("dayOfWeek(dateValue)").as("dayOfWeek") //
-				.andExpression("year(dateValue)").as("year") //
-				.andExpression("month(dateValue)").as("month") //
-				.andExpression("week(dateValue)").as("week") //
-				.andExpression("hour(dateValue)").as("hour") //
-				.andExpression("minute(dateValue)").as("minute") //
-				.andExpression("second(dateValue)").as("second") //
-				.andExpression("millisecond(dateValue)").as("millisecond") //
+		TypedAggregation<Data> agg = newAggregation(Data.class,
+				project() //
+						.andExpression("dayOfYear(dateValue)").as("dayOfYear") //
+						.andExpression("dayOfMonth(dateValue)").as("dayOfMonth") //
+						.andExpression("dayOfWeek(dateValue)").as("dayOfWeek") //
+						.andExpression("year(dateValue)").as("year") //
+						.andExpression("month(dateValue)").as("month") //
+						.andExpression("week(dateValue)").as("week") //
+						.andExpression("hour(dateValue)").as("hour") //
+						.andExpression("minute(dateValue)").as("minute") //
+						.andExpression("second(dateValue)").as("second") //
+						.andExpression("millisecond(dateValue)").as("millisecond") //
 		);
 
 		AggregationResults<DBObject> results = mongoTemplate.aggregate(agg, DBObject.class);
@@ -884,7 +886,7 @@ public class AggregationTests {
 						.and("orderId").previousOperation() //
 						.andExpression("netAmount * [0]", taxRate).as("taxAmount") //
 						.andExpression("netAmount * (1 + [0])", taxRate).as("totalAmount") //
-				), Invoice.class);
+		), Invoice.class);
 
 		Invoice invoice = results.getUniqueMappedResult();
 
@@ -1291,16 +1293,16 @@ public class AggregationTests {
 
 	private void createTagDocuments() {
 
-		DBCollection coll = mongoTemplate.getCollection(INPUT_COLLECTION);
+		MongoCollection<DBObject> coll = mongoTemplate.getCollection(INPUT_COLLECTION);
 
-		coll.insert(createDocument("Doc1", "spring", "mongodb", "nosql"));
-		coll.insert(createDocument("Doc2", "spring", "mongodb"));
-		coll.insert(createDocument("Doc3", "spring"));
+		coll.insertOne(createDocument("Doc1", "spring", "mongodb", "nosql"));
+		coll.insertOne(createDocument("Doc2", "spring", "mongodb"));
+		coll.insertOne(createDocument("Doc3", "spring"));
 	}
 
-	private static DBObject createDocument(String title, String... tags) {
+	private static BasicDBObject createDocument(String title, String... tags) {
 
-		DBObject doc = new BasicDBObject("title", title);
+		BasicDBObject doc = new BasicDBObject("title", title);
 		List<String> tagList = new ArrayList<String>();
 
 		for (String tag : tags) {

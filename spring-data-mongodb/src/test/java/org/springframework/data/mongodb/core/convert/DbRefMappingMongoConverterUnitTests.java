@@ -18,6 +18,7 @@ package org.springframework.data.mongodb.core.convert;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.data.mongodb.core.convert.LazyLoadingTestUtils.*;
 
@@ -34,6 +35,7 @@ import org.bson.types.ObjectId;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.data.annotation.AccessType;
@@ -53,10 +55,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.SerializationUtils;
 
 import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.DBRef;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 
 /**
  * Unit tests for {@link DbRefMappingMongoConverter}.
@@ -110,11 +112,11 @@ public class DbRefMappingMongoConverterUnitTests {
 		DBRef dbRef = mock(DBRef.class);
 
 		if (MongoClientVersion.isMongo3Driver()) {
-			DB dbMock = mock(DB.class);
-			DBCollection collectionMock = mock(DBCollection.class);
+			MongoDatabase dbMock = mock(MongoDatabase.class);
+			MongoCollection collectionMock = mock(MongoCollection.class);
 			when(dbFactory.getDb()).thenReturn(dbMock);
-			when(dbMock.getCollection(anyString())).thenReturn(collectionMock);
-			when(collectionMock.findOne(anyObject())).thenReturn(mapValDBObject);
+			when(dbMock.getCollection(anyString(), DBObject.class)).thenReturn(collectionMock);
+			when(collectionMock.find(Matchers.any(BasicDBObject.class))).thenReturn(mapValDBObject);
 		} else {
 			when(dbRefResolver.fetch(dbRef)).thenReturn(mapValDBObject);
 		}
@@ -197,7 +199,8 @@ public class DbRefMappingMongoConverterUnitTests {
 
 		BasicDBObject dbo = new BasicDBObject();
 		ClassWithLazyDbRefs lazyDbRefs = new ClassWithLazyDbRefs();
-		lazyDbRefs.dbRefToConcreteCollection = new ArrayList<LazyDbRefTarget>(Arrays.asList(new LazyDbRefTarget(id, value)));
+		lazyDbRefs.dbRefToConcreteCollection = new ArrayList<LazyDbRefTarget>(
+				Arrays.asList(new LazyDbRefTarget(id, value)));
 		converterSpy.write(lazyDbRefs, dbo);
 
 		ClassWithLazyDbRefs result = converterSpy.read(ClassWithLazyDbRefs.class, dbo);
@@ -245,8 +248,8 @@ public class DbRefMappingMongoConverterUnitTests {
 
 		BasicDBObject dbo = new BasicDBObject();
 		ClassWithLazyDbRefs lazyDbRefs = new ClassWithLazyDbRefs();
-		lazyDbRefs.dbRefToConcreteTypeWithPersistenceConstructor = new LazyDbRefTargetWithPeristenceConstructor(
-				(Object) id, (Object) value);
+		lazyDbRefs.dbRefToConcreteTypeWithPersistenceConstructor = new LazyDbRefTargetWithPeristenceConstructor((Object) id,
+				(Object) value);
 		converterSpy.write(lazyDbRefs, dbo);
 
 		ClassWithLazyDbRefs result = converterSpy.read(ClassWithLazyDbRefs.class, dbo);
@@ -597,18 +600,23 @@ public class DbRefMappingMongoConverterUnitTests {
 
 		@Id String id;
 		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) List<LazyDbRefTarget> dbRefToInterface;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) ArrayList<LazyDbRefTarget> dbRefToConcreteCollection;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) ArrayList<LazyDbRefTarget> dbRefToConcreteCollection;
 		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) LazyDbRefTarget dbRefToConcreteType;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) LazyDbRefTargetPropertyAccess dbRefToConcreteTypeWithPropertyAccess;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) LazyDbRefTargetWithPeristenceConstructor dbRefToConcreteTypeWithPersistenceConstructor;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) LazyDbRefTargetWithPeristenceConstructorWithoutDefaultConstructor dbRefToConcreteTypeWithPersistenceConstructorWithoutDefaultConstructor;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) LazyDbRefTargetPropertyAccess dbRefToConcreteTypeWithPropertyAccess;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) LazyDbRefTargetWithPeristenceConstructor dbRefToConcreteTypeWithPersistenceConstructor;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) LazyDbRefTargetWithPeristenceConstructorWithoutDefaultConstructor dbRefToConcreteTypeWithPersistenceConstructorWithoutDefaultConstructor;
 	}
 
 	static class SerializableClassWithLazyDbRefs implements Serializable {
 
 		private static final long serialVersionUID = 1L;
 
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) SerializableLazyDbRefTarget dbRefToSerializableTarget;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) SerializableLazyDbRefTarget dbRefToSerializableTarget;
 	}
 
 	static class LazyDbRefTarget implements Serializable {
@@ -765,9 +773,12 @@ public class DbRefMappingMongoConverterUnitTests {
 	static class WithObjectMethodOverrideLazyDbRefs {
 
 		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) LazyDbRefTarget dbRefToPlainObject;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) ToStringObjectMethodOverrideLazyDbRefTarget dbRefToToStringObjectMethodOverride;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) EqualsAndHashCodeObjectMethodOverrideLazyDbRefTarget dbRefEqualsAndHashcodeObjectMethodOverride2;
-		@org.springframework.data.mongodb.core.mapping.DBRef(lazy = true) EqualsAndHashCodeObjectMethodOverrideLazyDbRefTarget dbRefEqualsAndHashcodeObjectMethodOverride1;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) ToStringObjectMethodOverrideLazyDbRefTarget dbRefToToStringObjectMethodOverride;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) EqualsAndHashCodeObjectMethodOverrideLazyDbRefTarget dbRefEqualsAndHashcodeObjectMethodOverride2;
+		@org.springframework.data.mongodb.core.mapping.DBRef(
+				lazy = true) EqualsAndHashCodeObjectMethodOverrideLazyDbRefTarget dbRefEqualsAndHashcodeObjectMethodOverride1;
 	}
 
 	class ClassWithDbRefField {

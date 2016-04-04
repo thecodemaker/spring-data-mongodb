@@ -36,13 +36,13 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.util.CloseableIterator;
 
-import com.mongodb.CommandResult;
 import com.mongodb.Cursor;
 import com.mongodb.DB;
-import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.ReadPreference;
-import com.mongodb.WriteResult;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 
 /**
  * Interface that specifies a basic set of MongoDB operations. Implemented by {@link MongoTemplate}. Not often used but
@@ -74,7 +74,7 @@ public interface MongoOperations {
 	 * 
 	 * @param jsonCommand a MongoDB command expressed as a JSON string.
 	 */
-	CommandResult executeCommand(String jsonCommand);
+	DBObject executeCommand(String jsonCommand);
 
 	/**
 	 * Execute a MongoDB command. Any errors that result from executing this command will be converted into Spring's DAO
@@ -82,7 +82,7 @@ public interface MongoOperations {
 	 * 
 	 * @param command a MongoDB command
 	 */
-	CommandResult executeCommand(DBObject command);
+	DBObject executeCommand(DBObject command);
 
 	/**
 	 * Execute a MongoDB command. Any errors that result from executing this command will be converted into Spring's DAO
@@ -94,7 +94,7 @@ public interface MongoOperations {
 	 *             version 3 no longer supports this operation.
 	 */
 	@Deprecated
-	CommandResult executeCommand(DBObject command, int options);
+	DBObject executeCommand(DBObject command, int options);
 
 	/**
 	 * Execute a MongoDB command. Any errors that result from executing this command will be converted into Spring's data
@@ -105,7 +105,7 @@ public interface MongoOperations {
 	 * @return
 	 * @since 1.7
 	 */
-	CommandResult executeCommand(DBObject command, ReadPreference readPreference);
+	DBObject executeCommand(DBObject command, ReadPreference readPreference);
 
 	/**
 	 * Execute a MongoDB query and iterate over the query results on a per-document basis with a DocumentCallbackHandler.
@@ -188,7 +188,7 @@ public interface MongoOperations {
 	 * @param entityClass class that determines the collection to create
 	 * @return the created collection
 	 */
-	<T> DBCollection createCollection(Class<T> entityClass);
+	<T> MongoCollection<DBObject> createCollection(Class<T> entityClass);
 
 	/**
 	 * Create a collection with a name based on the provided entity class using the options.
@@ -197,7 +197,7 @@ public interface MongoOperations {
 	 * @param collectionOptions options to use when creating the collection.
 	 * @return the created collection
 	 */
-	<T> DBCollection createCollection(Class<T> entityClass, CollectionOptions collectionOptions);
+	<T> MongoCollection<DBObject> createCollection(Class<T> entityClass, CollectionOptions collectionOptions);
 
 	/**
 	 * Create an uncapped collection with the provided name.
@@ -205,7 +205,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection
 	 * @return the created collection
 	 */
-	DBCollection createCollection(String collectionName);
+	MongoCollection<DBObject> createCollection(String collectionName);
 
 	/**
 	 * Create a collection with the provided name and options.
@@ -214,7 +214,7 @@ public interface MongoOperations {
 	 * @param collectionOptions options to use when creating the collection.
 	 * @return the created collection
 	 */
-	DBCollection createCollection(String collectionName, CollectionOptions collectionOptions);
+	MongoCollection<DBObject> createCollection(String collectionName, CollectionOptions collectionOptions);
 
 	/**
 	 * A set of collection names.
@@ -231,7 +231,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection
 	 * @return an existing collection or a newly created one.
 	 */
-	DBCollection getCollection(String collectionName);
+	MongoCollection<DBObject> getCollection(String collectionName);
 
 	/**
 	 * Check to see if a collection with a name indicated by the entity class exists.
@@ -849,7 +849,7 @@ public interface MongoOperations {
 	 * @param entityClass class that determines the collection to use
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult upsert(Query query, Update update, Class<?> entityClass);
+	UpdateResult upsert(Query query, Update update, Class<?> entityClass);
 
 	/**
 	 * Performs an upsert. If no document is found that matches the query, a new document is created and inserted by
@@ -861,7 +861,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult upsert(Query query, Update update, String collectionName);
+	UpdateResult upsert(Query query, Update update, String collectionName);
 
 	/**
 	 * Performs an upsert. If no document is found that matches the query, a new document is created and inserted by
@@ -873,7 +873,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult upsert(Query query, Update update, Class<?> entityClass, String collectionName);
+	UpdateResult upsert(Query query, Update update, Class<?> entityClass, String collectionName);
 
 	/**
 	 * Updates the first object that is found in the collection of the entity class that matches the query document with
@@ -885,7 +885,7 @@ public interface MongoOperations {
 	 * @param entityClass class that determines the collection to use
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateFirst(Query query, Update update, Class<?> entityClass);
+	UpdateResult updateFirst(Query query, Update update, Class<?> entityClass);
 
 	/**
 	 * Updates the first object that is found in the specified collection that matches the query document criteria with
@@ -897,7 +897,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateFirst(Query query, Update update, String collectionName);
+	UpdateResult updateFirst(Query query, Update update, String collectionName);
 
 	/**
 	 * Updates the first object that is found in the specified collection that matches the query document criteria with
@@ -910,7 +910,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateFirst(Query query, Update update, Class<?> entityClass, String collectionName);
+	UpdateResult updateFirst(Query query, Update update, Class<?> entityClass, String collectionName);
 
 	/**
 	 * Updates all objects that are found in the collection for the entity class that matches the query document criteria
@@ -922,7 +922,7 @@ public interface MongoOperations {
 	 * @param entityClass class that determines the collection to use
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateMulti(Query query, Update update, Class<?> entityClass);
+	UpdateResult updateMulti(Query query, Update update, Class<?> entityClass);
 
 	/**
 	 * Updates all objects that are found in the specified collection that matches the query document criteria with the
@@ -934,7 +934,7 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateMulti(Query query, Update update, String collectionName);
+	UpdateResult updateMulti(Query query, Update update, String collectionName);
 
 	/**
 	 * Updates all objects that are found in the collection for the entity class that matches the query document criteria
@@ -947,14 +947,14 @@ public interface MongoOperations {
 	 * @param collectionName name of the collection to update the object in
 	 * @return the WriteResult which lets you access the results of the previous write.
 	 */
-	WriteResult updateMulti(final Query query, final Update update, Class<?> entityClass, String collectionName);
+	UpdateResult updateMulti(final Query query, final Update update, Class<?> entityClass, String collectionName);
 
 	/**
 	 * Remove the given object from the collection by id.
 	 * 
 	 * @param object
 	 */
-	WriteResult remove(Object object);
+	DeleteResult remove(Object object);
 
 	/**
 	 * Removes the given object from the given collection.
@@ -962,7 +962,7 @@ public interface MongoOperations {
 	 * @param object
 	 * @param collection must not be {@literal null} or empty.
 	 */
-	WriteResult remove(Object object, String collection);
+	DeleteResult remove(Object object, String collection);
 
 	/**
 	 * Remove all documents that match the provided query document criteria from the the collection used to store the
@@ -971,7 +971,7 @@ public interface MongoOperations {
 	 * @param query
 	 * @param entityClass
 	 */
-	WriteResult remove(Query query, Class<?> entityClass);
+	DeleteResult remove(Query query, Class<?> entityClass);
 
 	/**
 	 * Remove all documents that match the provided query document criteria from the the collection used to store the
@@ -981,7 +981,7 @@ public interface MongoOperations {
 	 * @param entityClass
 	 * @param collectionName
 	 */
-	WriteResult remove(Query query, Class<?> entityClass, String collectionName);
+	DeleteResult remove(Query query, Class<?> entityClass, String collectionName);
 
 	/**
 	 * Remove all documents from the specified collection that match the provided query document criteria. There is no
@@ -990,7 +990,7 @@ public interface MongoOperations {
 	 * @param query the query document that specifies the criteria used to remove a record
 	 * @param collectionName name of the collection where the objects will removed
 	 */
-	WriteResult remove(Query query, String collectionName);
+	DeleteResult remove(Query query, String collectionName);
 
 	/**
 	 * Returns and removes all documents form the specified collection that match the provided query.

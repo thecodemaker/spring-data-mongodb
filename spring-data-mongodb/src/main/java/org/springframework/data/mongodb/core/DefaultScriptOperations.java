@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.bson.RawBsonDocument;
 import org.bson.types.ObjectId;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mongodb.core.script.ExecutableMongoScript;
@@ -34,8 +35,8 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import com.mongodb.DB;
 import com.mongodb.MongoException;
+import com.mongodb.client.MongoDatabase;
 
 /**
  * Default implementation of {@link ScriptOperations} capable of saving and executing {@link ServerSideJavaScript}.
@@ -97,8 +98,10 @@ class DefaultScriptOperations implements ScriptOperations {
 		return mongoOperations.execute(new DbCallback<Object>() {
 
 			@Override
-			public Object doInDB(DB db) throws MongoException, DataAccessException {
-				return db.eval(script.getCode(), convertScriptArgs(args));
+			public Object doInDB(MongoDatabase db) throws MongoException, DataAccessException {
+
+				throw new UnsupportedOperationException("where's eval in this damned driver?");
+				// return db.eval(script.getCode(), convertScriptArgs(args));
 			}
 		});
 	}
@@ -115,8 +118,10 @@ class DefaultScriptOperations implements ScriptOperations {
 		return mongoOperations.execute(new DbCallback<Object>() {
 
 			@Override
-			public Object doInDB(DB db) throws MongoException, DataAccessException {
-				return db.eval(String.format("%s(%s)", scriptName, convertAndJoinScriptArgs(args)));
+			public Object doInDB(MongoDatabase db) throws MongoException, DataAccessException {
+
+				return db
+						.runCommand(RawBsonDocument.parse(String.format("%s(%s)", scriptName, convertAndJoinScriptArgs(args))));
 			}
 		});
 	}
@@ -164,8 +169,8 @@ class DefaultScriptOperations implements ScriptOperations {
 		List<Object> convertedValues = new ArrayList<Object>(args.length);
 
 		for (Object arg : args) {
-			convertedValues.add(arg instanceof String ? String.format("'%s'", arg) : this.mongoOperations.getConverter()
-					.convertToMongoType(arg));
+			convertedValues.add(arg instanceof String ? String.format("'%s'", arg)
+					: this.mongoOperations.getConverter().convertToMongoType(arg));
 		}
 
 		return convertedValues.toArray();

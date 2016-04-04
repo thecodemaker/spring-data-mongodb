@@ -15,9 +15,6 @@
  */
 package org.springframework.data.mongodb.repository.query;
 
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -44,7 +41,10 @@ import org.springframework.data.util.StreamUtils;
 import org.springframework.data.util.TypeInformation;
 import org.springframework.util.ClassUtils;
 
-import com.mongodb.WriteResult;
+import com.mongodb.client.result.DeleteResult;
+
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 interface MongoQueryExecution {
 
@@ -290,8 +290,8 @@ interface MongoQueryExecution {
 				return operations.findAllAndRemove(query, type, collection);
 			}
 
-			WriteResult writeResult = operations.remove(query, type, collection);
-			return writeResult != null ? writeResult.getN() : 0L;
+			DeleteResult writeResult = operations.remove(query, type, collection);
+			return writeResult != null ? writeResult.getDeletedCount() : 0L;
 		}
 	}
 
