@@ -123,7 +123,11 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndDeleteOptions;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.util.JSON;
@@ -347,7 +351,7 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 				BasicDBObject mappedQuery = (BasicDBObject) queryMapper.getMappedObject(query.getQueryObject(),
 						persistentEntity);
 
-				MongoCursor<DBObject> cursor = collection.find(mappedQuery).projection(mappedFields).iterator();
+				FindIterable<DBObject> cursor = collection.find(mappedQuery).projection(mappedFields);
 				QueryCursorPreparer cursorPreparer = new QueryCursorPreparer(query, entityType);
 
 				ReadDbObjectCallback<T> readCallback = new ReadDbObjectCallback<T>(mongoConverter, entityType,
@@ -871,6 +875,10 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 		if (!(objectToSave instanceof String)) {
 			DBObject dbDoc = new BasicDBObject();
 			writer.write(objectToSave, dbDoc);
+
+			if (dbDoc.containsField("_id") && dbDoc.get("_id") == null) {
+				dbDoc.removeField("_id");
+			}
 			return dbDoc;
 		} else {
 			try {
@@ -1113,9 +1121,10 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 						dbDoc, null);
 				WriteConcern writeConcernToUse = prepareWriteConcern(mongoAction);
 				if (writeConcernToUse == null) {
-					collection.insertOne(dbDoc);
+					collection.replaceOne(Filters.eq(ID_FIELD, dbDoc.get(ID_FIELD)), dbDoc, new UpdateOptions().upsert(true));
 				} else {
-					collection.withWriteConcern(writeConcernToUse).insertOne(dbDoc);
+					collection.withWriteConcern(writeConcernToUse).replaceOne(Filters.eq(ID_FIELD, dbDoc.get(ID_FIELD)), dbDoc,
+							new UpdateOptions().upsert(true));
 				}
 				// handleAnyWriteResultErrors(writeResult, dbDoc, MongoActionOperation.SAVE);
 				return dbDoc.get(ID_FIELD);
@@ -1184,11 +1193,14 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 						entityClass, updateObj, queryObj);
 				WriteConcern writeConcernToUse = prepareWriteConcern(mongoAction);
 
+				UpdateOptions opts = new UpdateOptions();
+				opts.upsert(upsert);
+
 				if (writeConcernToUse == null) {
-					return collection.updateOne((BasicDBObject) queryObj, (BasicDBObject) updateObj);
+					return collection.updateOne((BasicDBObject) queryObj, (BasicDBObject) updateObj, opts);
 				} else {
 					return collection.withWriteConcern(writeConcernToUse).updateOne((BasicDBObject) queryObj,
-							(BasicDBObject) updateObj);
+							(BasicDBObject) updateObj, opts);
 				}
 
 				// WriteResult writeResult = writeConcernToUse == null ? collection.update(queryObj, updateObj, upsert, multi)
@@ -1996,11 +2008,12 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 
 				FindIterable<DBObject> iterable = collectionCallback
 						.doInCollection(getAndPrepareCollection(getDb(), collectionName));
-				cursor = iterable.iterator();
 
 				if (preparer != null) {
-					cursor = preparer.prepare(cursor);
+					iterable = preparer.prepare(iterable);
 				}
+
+				cursor = iterable.iterator();
 
 				List<T> result = new ArrayList<T>();
 
@@ -2033,11 +2046,11 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 				FindIterable<DBObject> iterable = collectionCallback
 						.doInCollection(getAndPrepareCollection(getDb(), collectionName));
 
-				cursor = iterable.iterator();
-
 				if (preparer != null) {
-					cursor = preparer.prepare(cursor);
+					iterable = preparer.prepare(iterable);
 				}
+
+				cursor = iterable.iterator();
 
 				while (cursor.hasNext()) {
 					DBObject dbobject = cursor.next();
@@ -2235,7 +2248,7 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 		}
 
 		public FindCallback(DBObject query, DBObject fields) {
-			this.query = query;
+			this.query = query == null ? new BasicDBObject() : query;
 			this.fields = fields;
 		}
 
@@ -2294,11 +2307,16 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 
 		public DBObject doInCollection(MongoCollection<DBObject> collection) throws MongoException, DataAccessException {
 
-			return collection.findOneAndUpdate((BasicDBObject) query, (BasicDBObject) update);
-
-			// return collection.findAndModify(query, fields, sort, options.isRemove(), update, options.isReturnNew(),
-			// options.isUpsert());
-
+			FindOneAndUpdateOptions opts = new FindOneAndUpdateOptions();
+			opts.sort((BasicDBObject) sort);
+			if (options.isUpsert()) {
+				opts.upsert(true);
+			}
+			opts.projection((BasicDBObject) fields);
+			if (options.returnNew) {
+				opts.returnDocument(ReturnDocument.AFTER);
+			}
+			return collection.findOneAndUpdate((BasicDBObject) query, (BasicDBObject) update, opts);
 		}
 
 	}
@@ -2394,7 +2412,7 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 		 * (non-Javadoc)
 		 * @see org.springframework.data.mongodb.core.CursorPreparer#prepare(com.mongodb.DBCursor)
 		 */
-		public MongoCursor<DBObject> prepare(MongoCursor<DBObject> cursor) {
+		public FindIterable<DBObject> prepare(FindIterable<DBObject> cursor) {
 
 			if (query == null) {
 				return cursor;
@@ -2405,25 +2423,29 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 				return cursor;
 			}
 
-			MongoCursor<DBObject> cursorToUse = cursor;
+			FindIterable<DBObject> cursorToUse = cursor;
 
 			try {
 				if (query.getSkip() > 0) {
-					// cursorToUse = cursorToUse.skip(query.getSkip());
+					cursorToUse = cursorToUse.skip(query.getSkip());
 				}
 				if (query.getLimit() > 0) {
-					// cursorToUse = cursorToUse.limit(query.getLimit());
+					cursorToUse = cursorToUse.limit(query.getLimit());
 				}
 				if (query.getSortObject() != null) {
 					DBObject sortDbo = type != null ? getMappedSortObject(query, type) : query.getSortObject();
-					// cursorToUse = cursorToUse.sort(sortDbo);
+					cursorToUse = cursorToUse.sort((BasicDBObject) sortDbo);
 				}
 				if (StringUtils.hasText(query.getHint())) {
-					// cursorToUse = cursorToUse.hint(query.getHint());
+
+					// TODO
+					// cursorToUse = cursorToUse..hint(query.getHint());
 				}
 				if (query.getMeta().hasValues()) {
 					for (Entry<String, Object> entry : query.getMeta().values()) {
-						// cursorToUse = cursorToUse.addSpecial(entry.getKey(), entry.getValue());
+
+						// TODO
+						// cursorToUse = cursorToUse..addSpecial(entry.getKey(), entry.getValue());
 					}
 				}
 
@@ -2481,6 +2503,13 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 		private PersistenceExceptionTranslator exceptionTranslator;
 		private DbObjectCallback<T> objectReadCallback;
 
+		CloseableIterableCursorAdapter(MongoCursor<DBObject> cursor, PersistenceExceptionTranslator exceptionTranslator,
+				DbObjectCallback<T> objectReadCallback) {
+			this.cursor = cursor;
+			this.exceptionTranslator = exceptionTranslator;
+			this.objectReadCallback = objectReadCallback;
+		}
+
 		/**
 		 * Creates a new {@link CloseableIterableCursorAdapter} backed by the given {@link Cursor}.
 		 * 
@@ -2488,10 +2517,10 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 		 * @param exceptionTranslator
 		 * @param objectReadCallback
 		 */
-		public CloseableIterableCursorAdapter(MongoCursor<DBObject> cursor,
+		public CloseableIterableCursorAdapter(FindIterable<DBObject> cursor,
 				PersistenceExceptionTranslator exceptionTranslator, DbObjectCallback<T> objectReadCallback) {
 
-			this.cursor = cursor;
+			this.cursor = cursor.iterator();
 			this.exceptionTranslator = exceptionTranslator;
 			this.objectReadCallback = objectReadCallback;
 		}

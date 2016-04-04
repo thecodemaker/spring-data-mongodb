@@ -60,6 +60,7 @@ import org.springframework.data.repository.core.support.DefaultRepositoryMetadat
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.DBObject;
 import com.mongodb.WriteResult;
+import com.mongodb.client.result.DeleteResult;
 
 /**
  * Unit tests for {@link AbstractMongoQuery}.
@@ -75,6 +76,7 @@ public class AbstractMongoQueryUnitTests {
 	@Mock BasicMongoPersistentEntity<?> persitentEntityMock;
 	@Mock MongoMappingContext mappingContextMock;
 	@Mock WriteResult writeResultMock;
+	@Mock DeleteResult deleteResultMock;
 
 	@Before
 	public void setUp() {
@@ -141,7 +143,7 @@ public class AbstractMongoQueryUnitTests {
 
 		when(writeResultMock.getN()).thenReturn(100);
 		when(mongoOperationsMock.remove(Matchers.any(Query.class), eq(Person.class), eq("persons")))
-				.thenReturn(writeResultMock);
+				.thenReturn(deleteResultMock);
 
 		MongoQueryFake query = createQueryForMethod("deletePersonByLastname", String.class);
 		query.setDeleteQuery(true);
