@@ -25,14 +25,11 @@ import static org.springframework.data.mongodb.test.util.IsBsonObject.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bson.Document;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.springframework.data.domain.Sort.Direction;
-
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.DBObject;
 
 /**
  * Unit tests for {@link Aggregation}.
@@ -173,15 +170,15 @@ public class AggregationUnitTests {
 	@Test
 	public void referencesToGroupIdsShouldBeRenderedAsReferences() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project("a"), //
 				group("a").count().as("aCnt"), //
 				project("aCnt", "a") //
 		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject secondProjection = ((List<DBObject>) agg.get("pipeline")).get(2);
-		DBObject fields = getAsDBObject(secondProjection, "$project");
+		Document secondProjection = ((List<Document>) agg.get("pipeline")).get(2);
+		Document fields = getAsDocument(secondProjection, "$project");
 		assertThat(fields.get("aCnt"), is((Object) 1));
 		assertThat(fields.get("a"), is((Object) "$_id.a"));
 	}
@@ -197,11 +194,11 @@ public class AggregationUnitTests {
 		ops.add(group("a").count().as("aCnt"));
 		ops.add(project("aCnt", "a"));
 
-		DBObject agg = newAggregation(ops).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
+		Document agg = newAggregation(ops).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject secondProjection = ((List<DBObject>) agg.get("pipeline")).get(2);
-		DBObject fields = getAsDBObject(secondProjection, "$project");
+		Document secondProjection = ((List<Document>) agg.get("pipeline")).get(2);
+		Document fields = getAsDocument(secondProjection, "$project");
 		assertThat(fields.get("aCnt"), is((Object) 1));
 		assertThat(fields.get("a"), is((Object) "$_id.a"));
 	}
@@ -217,11 +214,11 @@ public class AggregationUnitTests {
 		ops.add(group("a").count().as("aCnt"));
 		ops.add(project("aCnt", "a"));
 
-		DBObject agg = newAggregation(DBObject.class, ops).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
+		Document agg = newAggregation(Document.class, ops).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject secondProjection = ((List<DBObject>) agg.get("pipeline")).get(2);
-		DBObject fields = getAsDBObject(secondProjection, "$project");
+		Document secondProjection = ((List<Document>) agg.get("pipeline")).get(2);
+		Document fields = getAsDocument(secondProjection, "$project");
 		assertThat(fields.get("aCnt"), is((Object) 1));
 		assertThat(fields.get("a"), is((Object) "$_id.a"));
 	}
@@ -232,15 +229,15 @@ public class AggregationUnitTests {
 	@Test
 	public void expressionBasedFieldsShouldBeReferencableInFollowingOperations() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project("a").andExpression("b+c").as("foo"), //
 				group("a").sum("foo").as("foosum") //
 		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject secondProjection = ((List<DBObject>) agg.get("pipeline")).get(1);
-		DBObject fields = getAsDBObject(secondProjection, "$group");
-		assertThat(fields.get("foosum"), is((Object) new BasicDBObject("$sum", "$foo")));
+		Document secondProjection = ((List<Document>) agg.get("pipeline")).get(1);
+		Document fields = getAsDocument(secondProjection, "$group");
+		assertThat(fields.get("foosum"), is((Object) new Document("$sum", "$foo")));
 	}
 
 	/**
@@ -249,7 +246,7 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldSupportReferingToNestedPropertiesInGroupOperation() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project("cmsParameterId", "rules"), //
 				unwind("rules"), //
 				group("cmsParameterId", "rules.ruleType").count().as("totol") //
@@ -257,9 +254,9 @@ public class AggregationUnitTests {
 
 		assertThat(agg, is(notNullValue()));
 
-		DBObject group = ((List<DBObject>) agg.get("pipeline")).get(2);
-		DBObject fields = getAsDBObject(group, "$group");
-		DBObject id = getAsDBObject(fields, "_id");
+		Document group = ((List<Document>) agg.get("pipeline")).get(2);
+		Document fields = getAsDocument(group, "$group");
+		Document id = getAsDocument(fields, "_id");
 
 		assertThat(id.get("ruleType"), is((Object) "$rules.ruleType"));
 	}
@@ -270,16 +267,16 @@ public class AggregationUnitTests {
 	@Test
 	public void referencingProjectionAliasesFromPreviousStepShouldReferToTheSameFieldTarget() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project().and("foo.bar").as("ba") //
 				, project().and("ba").as("b") //
 		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		DBObject projection0 = extractPipelineElement(agg, 0, "$project");
-		assertThat(projection0, is((DBObject) new BasicDBObject("ba", "$foo.bar")));
+		Document projection0 = extractPipelineElement(agg, 0, "$project");
+		assertThat(projection0, is((Document) new Document("ba", "$foo.bar")));
 
-		DBObject projection1 = extractPipelineElement(agg, 1, "$project");
-		assertThat(projection1, is((DBObject) new BasicDBObject("b", "$ba")));
+		Document projection1 = extractPipelineElement(agg, 1, "$project");
+		assertThat(projection1, is((Document) new Document("b", "$ba")));
 	}
 
 	/**
@@ -288,12 +285,12 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldRenderAggregationWithDefaultOptionsCorrectly() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project().and("a").as("aa") //
 		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		assertThat(agg.toString(),
-				is("{ \"aggregate\" : \"foo\" , \"pipeline\" : [ { \"$project\" : { \"aa\" : \"$a\"}}]}"));
+		assertThat(agg,
+				is(Document.parse("{ \"aggregate\" : \"foo\" , \"pipeline\" : [ { \"$project\" : { \"aa\" : \"$a\"}}]}")));
 	}
 
 	/**
@@ -302,21 +299,22 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldRenderAggregationWithCustomOptionsCorrectly() {
 
-		AggregationOptions aggregationOptions = newAggregationOptions().explain(true).cursor(new BasicDBObject("foo", 1))
+		AggregationOptions aggregationOptions = newAggregationOptions().explain(true).cursor(new Document("foo", 1))
 				.allowDiskUse(true).build();
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project().and("a").as("aa") //
 		) //
-		.withOptions(aggregationOptions) //
+				.withOptions(aggregationOptions) //
 				.toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		assertThat(agg.toString(), is("{ \"aggregate\" : \"foo\" , " //
-				+ "\"pipeline\" : [ { \"$project\" : { \"aa\" : \"$a\"}}] , " //
-				+ "\"allowDiskUse\" : true , " //
-				+ "\"explain\" : true , " //
-				+ "\"cursor\" : { \"foo\" : 1}}" //
-		));
+		assertThat(agg,
+				is(Document.parse("{ \"aggregate\" : \"foo\" , " //
+						+ "\"pipeline\" : [ { \"$project\" : { \"aa\" : \"$a\"}}] , " //
+						+ "\"allowDiskUse\" : true , " //
+						+ "\"explain\" : true , " //
+						+ "\"cursor\" : { \"foo\" : 1}}") //
+				));
 	}
 
 	/**
@@ -325,7 +323,7 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldSupportReferencingSystemVariables() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				project("someKey") //
 						.and("a").as("a1") //
 						.and(Aggregation.CURRENT + ".a").as("a2") //
@@ -333,16 +331,14 @@ public class AggregationUnitTests {
 				, group("someKey").first(Aggregation.ROOT).as("doc") //
 		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		DBObject projection0 = extractPipelineElement(agg, 0, "$project");
-		assertThat(projection0, is((DBObject) new BasicDBObject("someKey", 1).append("a1", "$a")
-				.append("a2", "$$CURRENT.a")));
+		Document projection0 = extractPipelineElement(agg, 0, "$project");
+		assertThat(projection0, is((Document) new Document("someKey", 1).append("a1", "$a").append("a2", "$$CURRENT.a")));
 
-		DBObject sort = extractPipelineElement(agg, 1, "$sort");
-		assertThat(sort, is((DBObject) new BasicDBObject("a", -1)));
+		Document sort = extractPipelineElement(agg, 1, "$sort");
+		assertThat(sort, is((Document) new Document("a", -1)));
 
-		DBObject group = extractPipelineElement(agg, 2, "$group");
-		assertThat(group,
-				is((DBObject) new BasicDBObject("_id", "$someKey").append("doc", new BasicDBObject("$first", "$$ROOT"))));
+		Document group = extractPipelineElement(agg, 2, "$group");
+		assertThat(group, is((Document) new Document("_id", "$someKey").append("doc", new Document("$first", "$$ROOT"))));
 	}
 
 	/**
@@ -351,15 +347,15 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldExposeAliasedFieldnameForProjectionsIncludingOperationsDownThePipeline() {
 
-		DBObject agg = Aggregation.newAggregation(//
+		Document agg = Aggregation.newAggregation(//
 				project("date") //
 						.and("tags").minus(10).as("tags_count")//
 				, group("date")//
 						.sum("tags_count").as("count")//
-				).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
+		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		DBObject group = extractPipelineElement(agg, 1, "$group");
-		assertThat(getAsDBObject(group, "count"), is(new BasicDBObjectBuilder().add("$sum", "$tags_count").get()));
+		Document group = extractPipelineElement(agg, 1, "$group");
+		assertThat(getAsDocument(group, "count"), is(new Document().append("$sum", "$tags_count")));
 	}
 
 	/**
@@ -368,20 +364,20 @@ public class AggregationUnitTests {
 	@Test
 	public void shouldUseAliasedFieldnameForProjectionsIncludingOperationsDownThePipelineWhenUsingSpEL() {
 
-		DBObject agg = Aggregation.newAggregation(//
+		Document agg = Aggregation.newAggregation(//
 				project("date") //
 						.andExpression("tags-10")//
 				, group("date")//
 						.sum("tags_count").as("count")//
-				).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
+		).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
-		DBObject group = extractPipelineElement(agg, 1, "$group");
-		assertThat(getAsDBObject(group, "count"), is(new BasicDBObjectBuilder().add("$sum", "$tags_count").get()));
+		Document group = extractPipelineElement(agg, 1, "$group");
+		assertThat(getAsDocument(group, "count"), is(new Document().append("$sum", "$tags_count")));
 	}
 
-	private DBObject extractPipelineElement(DBObject agg, int index, String operation) {
+	private Document extractPipelineElement(Document agg, int index, String operation) {
 
-		List<DBObject> pipeline = (List<DBObject>) agg.get("pipeline");
-		return (DBObject) pipeline.get(index).get(operation);
+		List<Document> pipeline = (List<Document>) agg.get("pipeline");
+		return (Document) pipeline.get(index).get(operation);
 	}
 }

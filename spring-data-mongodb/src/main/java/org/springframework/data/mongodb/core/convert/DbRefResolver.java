@@ -15,10 +15,10 @@
  */
 package org.springframework.data.mongodb.core.convert;
 
+import org.bson.Document;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentEntity;
 import org.springframework.data.mongodb.core.mapping.MongoPersistentProperty;
 
-import com.mongodb.DBObject;
 import com.mongodb.DBRef;
 
 /**
@@ -63,5 +63,5 @@ public interface DbRefResolver {
 	 * @return
 	 * @since 1.7
 	 */
-	DBObject fetch(DBRef dbRef);
+	Document fetch(DBRef dbRef);
 }

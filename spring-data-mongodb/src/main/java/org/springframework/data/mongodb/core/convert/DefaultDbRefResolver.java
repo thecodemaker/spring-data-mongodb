@@ -25,6 +25,7 @@ import java.lang.reflect.Method;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
+import org.bson.Document;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cglib.proxy.Callback;
 import org.springframework.cglib.proxy.Enhancer;
@@ -40,7 +41,6 @@ import org.springframework.objenesis.ObjenesisStd;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
-import com.mongodb.DBObject;
 import com.mongodb.DBRef;
 
 /**
@@ -105,7 +105,7 @@ public class DefaultDbRefResolver implements DbRefResolver {
 	 * @see org.springframework.data.mongodb.core.convert.DbRefResolver#fetch(com.mongodb.DBRef)
 	 */
 	@Override
-	public DBObject fetch(DBRef dbRef) {
+	public Document fetch(DBRef dbRef) {
 		return ReflectiveDBRefResolver.fetch(mongoDbFactory, dbRef);
 	}
 

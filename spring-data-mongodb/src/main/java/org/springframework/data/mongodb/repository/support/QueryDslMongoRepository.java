@@ -101,7 +101,8 @@ public class QueryDslMongoRepository<T, ID extends Serializable> extends SimpleM
 	 */
 	@Override
 	public List<T> findAll(Predicate predicate) {
-		return createQueryFor(predicate).fetchResults().getResults();
+		List<T> list = createQueryFor(predicate).fetchResults().getResults();
+		return list;
 	}
 
 	/*
@@ -141,6 +142,7 @@ public class QueryDslMongoRepository<T, ID extends Serializable> extends SimpleM
 		AbstractMongodbQuery<T, SpringDataMongodbQuery<T>> countQuery = createQueryFor(predicate);
 		AbstractMongodbQuery<T, SpringDataMongodbQuery<T>> query = createQueryFor(predicate);
 
+		System.out.println(createQueryFor(predicate).toString());
 		return new PageImpl<T>(applyPagination(query, pageable).fetchResults().getResults(), pageable,
 				countQuery.fetchCount());
 	}
