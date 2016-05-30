@@ -13,22 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.data.mongodb.core;
 
-import com.mongodb.DBCursor;
-import com.mongodb.reactivestreams.client.FindPublisher;
-
 /**
- * Simple callback interface to allow customization of a {@link FindPublisher}.
- *
  * @author Mark Paluch
  */
-interface ReactiveCursorPreparer {
+public interface IndexOperationsProvider {
 
 	/**
-	 * Prepare the given cursor (apply limits, skips and so on). Returns the prepared cursor.
+	 * Returns the operations that can be performed on indexes
 	 *
-	 * @param cursor
+	 * @return index operations on the named collection
 	 */
-	<T> FindPublisher<T> prepare(FindPublisher<T> cursor);
+	IndexOperations indexOps(String collectionName);
+
 }

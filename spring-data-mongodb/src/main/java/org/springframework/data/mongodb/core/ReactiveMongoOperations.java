@@ -16,59 +16,51 @@
 package org.springframework.data.mongodb.core;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Set;
 
-import org.springframework.data.geo.GeoResults;
-import org.springframework.data.mongodb.core.BulkOperations.BulkMode;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
+import org.bson.Document;
+import org.reactivestreams.Publisher;
 import org.springframework.data.mongodb.core.convert.MongoConverter;
-import org.springframework.data.mongodb.core.mapreduce.GroupBy;
-import org.springframework.data.mongodb.core.mapreduce.GroupByResults;
-import org.springframework.data.mongodb.core.mapreduce.MapReduceOptions;
-import org.springframework.data.mongodb.core.mapreduce.MapReduceResults;
 import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 
-import com.mongodb.CommandResult;
-import com.mongodb.Cursor;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
 import com.mongodb.ReadPreference;
-import com.mongodb.WriteResult;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.reactivestreams.client.MongoCollection;
-import com.mongodb.reactivestreams.client.Success;
-import org.bson.Document;
-import org.reactivestreams.Publisher;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Interface that specifies a basic set of MongoDB operations executed in a reactive way. Implemented by {@link ReactiveMongoTemplate}. Not often used but
- * a useful option for extensibility and testability (as it can be easily mocked, stubbed, or be the target of a JDK
- * proxy). Commands issued using {@link ReactiveMongoOperations} are lazily executed at the time a subscriber subscribes to the {@link Publisher}.
+ * Interface that specifies a basic set of MongoDB operations executed in a reactive way. Implemented by
+ * {@link ReactiveMongoTemplate}. Not often used but a useful option for extensibility and testability (as it can be
+ * easily mocked, stubbed, or be the target of a JDK proxy). Command execution using {@link ReactiveMongoOperations} is
+ * deffered until subscriber subscribes to the {@link Publisher}.
  *
- * TODO:
- * - adopt MongoDB 3 findOneAndReplace/findOneAndDelete/findOneAndUpdate
- * - Reactive Mongo Converter?
- *
+ * TODO: PersistenceException log/ignore/exception, return inserted objects of insert methods, geo, aggregation
  *
  * @author Mark Paluch
  * @see Flux
  * @see Mono
  * @see http://projectreactor.io/docs/
- *
  */
 public interface ReactiveMongoOperations {
+
+	/**
+	 * Returns the operations that can be performed on indexes
+	 *
+	 * @return index operations on the named collection
+	 */
+	ReactiveIndexOperations indexOps(String collectionName);
+
+	/**
+	 * Returns the operations that can be performed on indexes
+	 *
+	 * @return index operations on the named collection associated with the given entity class
+	 */
+	ReactiveIndexOperations indexOps(Class<?> entityClass);
 
 	/**
 	 * Execute the a MongoDB command expressed as a JSON string. This will call the method JSON.parse that is part of the
@@ -421,7 +413,7 @@ public interface ReactiveMongoOperations {
 	 * @return
 	 */
 	<T> Mono<T> findAndModify(Query query, Update update, FindAndModifyOptions options, Class<T> entityClass,
-						String collectionName);
+			String collectionName);
 
 	/**
 	 * Map the results of an ad-hoc query on the collection for the entity type to a single instance of an object of the
@@ -505,8 +497,9 @@ public interface ReactiveMongoOperations {
 	 * Insert is used to initially store the object into the database. To update an existing object use the save method.
 	 *
 	 * @param objectToSave the object to store in the collection.
+	 * @return
 	 */
-	Mono<Void> insert(Object objectToSave);
+	<T> Mono<T> insert(T objectToSave);
 
 	/**
 	 * Insert the object into the specified collection.
@@ -518,32 +511,36 @@ public interface ReactiveMongoOperations {
 	 *
 	 * @param objectToSave the object to store in the collection
 	 * @param collectionName name of the collection to store the object in
+	 * @return
 	 */
-	Mono<Void> insert(Object objectToSave, String collectionName);
+	<T> Mono<T> insert(T objectToSave, String collectionName);
 
 	/**
 	 * Insert a Collection of objects into a collection in a single batch write to the database.
 	 *
 	 * @param batchToSave the list of objects to save.
 	 * @param entityClass class that determines the collection to use
+	 * @return
 	 */
-	Mono<Void> insert(Collection<? extends Object> batchToSave, Class<?> entityClass);
+	<T> Flux<T> insert(Collection<? extends T> batchToSave, Class<?> entityClass);
 
 	/**
 	 * Insert a list of objects into the specified collection in a single batch write to the database.
 	 *
 	 * @param batchToSave the list of objects to save.
 	 * @param collectionName name of the collection to store the object in
+	 * @return
 	 */
-	Mono<Void> insert(Collection<? extends Object> batchToSave, String collectionName);
+	<T> Flux<T> insert(Collection<? extends T> batchToSave, String collectionName);
 
 	/**
 	 * Insert a mixed Collection of objects into a database collection determining the collection name to use based on the
 	 * class.
 	 *
 	 * @param objectsToSave the list of objects to save.
+	 * @return
 	 */
-	Mono<Void> insertAll(Collection<? extends Object> objectsToSave);
+	<T> Flux<T> insertAll(Collection<? extends T> objectsToSave);
 
 	/**
 	 * Insert the object into the collection for the entity type of the object to save.
@@ -560,14 +557,16 @@ public interface ReactiveMongoOperations {
 	 * Insert is used to initially store the object into the database. To update an existing object use the save method.
 	 *
 	 * @param objectToSave the object to store in the collection.
+	 * @return
 	 */
-	Mono<Void> insert(Mono<? extends Object> objectToSave);
+	<T> Mono<T> insert(Mono<? extends T> objectToSave);
 
 	/**
 	 * Insert a Collection of objects into a collection in a single batch write to the database.
 	 *
 	 * @param batchToSave the publisher which provides objects to save.
 	 * @param entityClass class that determines the collection to use
+	 * @return
 	 */
 	Mono<Void> insert(Publisher<? extends Object> batchToSave, Class<?> entityClass);
 
@@ -576,6 +575,7 @@ public interface ReactiveMongoOperations {
 	 *
 	 * @param batchToSave the publisher which provides objects to save.
 	 * @param collectionName name of the collection to store the object in
+	 * @return
 	 */
 	Mono<Void> insert(Publisher<? extends Object> batchToSave, String collectionName);
 
@@ -584,8 +584,9 @@ public interface ReactiveMongoOperations {
 	 * class.
 	 *
 	 * @param objectsToSave the publisher which provides objects to save.
+	 * @return
 	 */
-	Mono<Void> insertAll(Publisher<? extends Object> objectsToSave);
+	<T> Flux<T> insertAll(Publisher<? extends T> objectsToSave);
 
 	/**
 	 * Save the object to the collection for the entity type of the object to save. This will perform an insert if the
@@ -601,8 +602,9 @@ public interface ReactiveMongoOperations {
 	 * Spring's Type Conversion"</a> for more details.
 	 *
 	 * @param objectToSave the object to store in the collection
+	 * @return
 	 */
-	Mono<Void> save(Object objectToSave);
+	<T> Mono<T> save(T objectToSave);
 
 	/**
 	 * Save the object to the specified collection. This will perform an insert if the object is not already present, that
@@ -619,10 +621,11 @@ public interface ReactiveMongoOperations {
 	 *
 	 * @param objectToSave the object to store in the collection
 	 * @param collectionName name of the collection to store the object in
+	 * @return
 	 */
-	Mono<Void> save(Object objectToSave, String collectionName);
+	<T> Mono<T> save(T objectToSave, String collectionName);
 
-		/**
+	/**
 	 * Save the object to the collection for the entity type of the object to save. This will perform an insert if the
 	 * object is not already present, that is an 'upsert'.
 	 * <p/>
@@ -636,8 +639,9 @@ public interface ReactiveMongoOperations {
 	 * Spring's Type Conversion"</a> for more details.
 	 *
 	 * @param objectToSave the object to store in the collection
+	 * @return
 	 */
-	Mono<Void> save(Mono<? extends Object> objectToSave);
+	<T> Mono<T> save(Mono<? extends T> objectToSave);
 
 	/**
 	 * Save the object to the specified collection. This will perform an insert if the object is not already present, that
@@ -654,8 +658,9 @@ public interface ReactiveMongoOperations {
 	 *
 	 * @param objectToSave the object to store in the collection
 	 * @param collectionName name of the collection to store the object in
+	 * @return
 	 */
-	Mono<Void> save(Mono<? extends Object> objectToSave, String collectionName);
+	<T> Mono<T> save(Mono<? extends T> objectToSave, String collectionName);
 
 	/**
 	 * Performs an upsert. If no document is found that matches the query, a new document is created and inserted by
@@ -770,6 +775,7 @@ public interface ReactiveMongoOperations {
 	 * Remove the given object from the collection by id.
 	 *
 	 * @param object
+	 * @return
 	 */
 	Mono<DeleteResult> remove(Object object);
 
@@ -784,17 +790,19 @@ public interface ReactiveMongoOperations {
 	/**
 	 * Remove the given object from the collection by id.
 	 *
-	 * @param object
+	 * @param objectToRemove
+	 * @return
 	 */
-	Mono<DeleteResult> remove(Mono<? extends Object> object);
+	Mono<DeleteResult> remove(Mono<? extends Object> objectToRemove);
 
 	/**
 	 * Removes the given object from the given collection.
 	 *
-	 * @param object
+	 * @param objectToRemove
 	 * @param collection must not be {@literal null} or empty.
+	 * @return
 	 */
-	Mono<DeleteResult> remove(Mono<? extends Object> object, String collection);
+	Mono<DeleteResult> remove(Mono<? extends Object> objectToRemove, String collection);
 
 	/**
 	 * Remove all documents that match the provided query document criteria from the the collection used to store the
@@ -802,6 +810,7 @@ public interface ReactiveMongoOperations {
 	 *
 	 * @param query
 	 * @param entityClass
+	 * @return
 	 */
 	Mono<DeleteResult> remove(Query query, Class<?> entityClass);
 
@@ -812,6 +821,7 @@ public interface ReactiveMongoOperations {
 	 * @param query
 	 * @param entityClass
 	 * @param collectionName
+	 * @return
 	 */
 	Mono<DeleteResult> remove(Query query, Class<?> entityClass, String collectionName);
 
