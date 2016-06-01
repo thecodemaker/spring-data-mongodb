@@ -236,7 +236,7 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware, 
 		mappingContext = this.mongoConverter.getMappingContext();
 		// We create indexes based on mapping events
 		if (null != mappingContext && mappingContext instanceof MongoMappingContext) {
-			indexCreator = new MongoPersistentEntityIndexCreator((MongoMappingContext) mappingContext, this, exceptionTranslator);
+			indexCreator = new MongoPersistentEntityIndexCreator((MongoMappingContext) mappingContext, this);
 			eventPublisher = new MongoMappingEventPublisher(indexCreator);
 			if (mappingContext instanceof ApplicationEventPublisherAware) {
 				((ApplicationEventPublisherAware) mappingContext).setApplicationEventPublisher(eventPublisher);
@@ -2116,6 +2116,11 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware, 
 		} catch (RuntimeException e) {
 			throw potentiallyConvertRuntimeException(e, exceptionTranslator);
 		}
+	}
+
+	@Override
+	public PersistenceExceptionTranslator getExceptionTranslator() {
+		return exceptionTranslator;
 	}
 
 	private MongoPersistentEntity<?> getPersistentEntity(Class<?> type) {
