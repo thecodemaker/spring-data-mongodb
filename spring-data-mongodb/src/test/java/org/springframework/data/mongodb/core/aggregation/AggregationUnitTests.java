@@ -125,12 +125,12 @@ public class AggregationUnitTests {
 	@Test
 	public void fullUnwindOperationShouldBuildCorrectClause() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				unwind("a", "x", true)).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject unwind = ((List<DBObject>) agg.get("pipeline")).get(0);
-		assertThat((DBObject) unwind.get("$unwind"),
+		Document unwind = ((List<Document>) agg.get("pipeline")).get(0);
+		assertThat((Document) unwind.get("$unwind"),
 				isBsonObject(). //
 						containing("includeArrayIndex", "x").//
 						containing("preserveNullAndEmptyArrays", true));
@@ -142,11 +142,11 @@ public class AggregationUnitTests {
 	@Test
 	public void unwindOperationWithPreserveNullShouldBuildCorrectClause() {
 
-		DBObject agg = newAggregation( //
+		Document agg = newAggregation( //
 				unwind("a", true)).toDbObject("foo", Aggregation.DEFAULT_CONTEXT);
 
 		@SuppressWarnings("unchecked")
-		DBObject unwind = ((List<DBObject>) agg.get("pipeline")).get(0);
+		Document unwind = ((List<Document>) agg.get("pipeline")).get(0);
 		assertThat(unwind,
 				isBsonObject().notContaining("includeArrayIndex").containing("preserveNullAndEmptyArrays", true));
 	}

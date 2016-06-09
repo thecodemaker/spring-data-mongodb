@@ -55,6 +55,7 @@ import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.WriteConcern;
+import com.mongodb.client.MongoCollection;
 
 /**
  * @author Christoph Strobl
@@ -333,17 +334,19 @@ public class GeoJsonTests {
 				new CollectionCallback<Object>() {
 
 					@Override
-					public Object doInCollection(DBCollection collection) throws MongoException, DataAccessException {
+					public Object doInCollection(MongoCollection<org.bson.Document> collection) throws MongoException, DataAccessException {
 
-						BasicDBObject pointRepresentation = new BasicDBObject();
+						org.bson.Document pointRepresentation = new org.bson.Document();
 						pointRepresentation.put("type", "Point");
 						pointRepresentation.put("coordinates", new BasicDbListBuilder().add(0).add(0).get());
 
-						BasicDBObject document = new BasicDBObject();
+						org.bson.Document document = new org.bson.Document();
 						document.append("_id", "datamongo-1453");
 						document.append("geoJsonPoint", pointRepresentation);
 
-						return collection.save(document);
+						collection.insertOne(document);
+
+						return document;
 					}
 				});
 
@@ -361,19 +364,21 @@ public class GeoJsonTests {
 				new CollectionCallback<Object>() {
 
 					@Override
-					public Object doInCollection(DBCollection collection) throws MongoException, DataAccessException {
+					public Object doInCollection(MongoCollection<org.bson.Document> collection) throws MongoException, DataAccessException {
 
-						BasicDBObject lineStringRepresentation = new BasicDBObject();
+						org.bson.Document lineStringRepresentation = new org.bson.Document();
 						lineStringRepresentation.put("type", "LineString");
 						lineStringRepresentation.put("coordinates",
 								new BasicDbListBuilder().add(new BasicDbListBuilder().add(0).add(0).get())
 										.add(new BasicDbListBuilder().add(1).add(1).get()).get());
 
-						BasicDBObject document = new BasicDBObject();
+						org.bson.Document document = new org.bson.Document();
 						document.append("_id", "datamongo-1453");
 						document.append("geoJsonLineString", lineStringRepresentation);
 
-						return collection.save(document);
+						collection.insertOne(document);
+
+						return document;
 					}
 				});
 

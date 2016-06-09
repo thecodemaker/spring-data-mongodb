@@ -378,14 +378,14 @@ public class UpdateMapperUnitTests {
 
 		Update update = new Update().push("key").slice(5).each(Arrays.asList("Arya", "Arry", "Weasel"));
 
-		DBObject mappedObject = mapper.getMappedObject(update.getUpdateObject(), context.getPersistentEntity(Object.class));
+		Document mappedObject = mapper.getMappedObject(update.getUpdateObject(), context.getPersistentEntity(Object.class));
 
-		DBObject push = getAsDBObject(mappedObject, "$push");
-		DBObject key = getAsDBObject(push, "key");
+		Document push = getAsDocument(mappedObject, "$push");
+		Document key = getAsDocument(push, "key");
 
-		assertThat(key.containsField("$slice"), is(true));
+		assertThat(key.containsKey("$slice"), is(true));
 		assertThat((Integer) key.get("$slice"), is(5));
-		assertThat(key.containsField("$each"), is(true));
+		assertThat(key.containsKey("$each"), is(true));
 	}
 
 	/**
@@ -397,20 +397,20 @@ public class UpdateMapperUnitTests {
 		Update update = new Update().push("key").slice(5).each(Arrays.asList("Arya", "Arry", "Weasel")).push("key-2")
 				.slice(-2).each("The Beggar King", "Viserys III Targaryen");
 
-		DBObject mappedObject = mapper.getMappedObject(update.getUpdateObject(), context.getPersistentEntity(Object.class));
+		Document mappedObject = mapper.getMappedObject(update.getUpdateObject(), context.getPersistentEntity(Object.class));
 
-		DBObject push = getAsDBObject(mappedObject, "$push");
-		DBObject key = getAsDBObject(push, "key");
+		Document push = getAsDocument(mappedObject, "$push");
+		Document key = getAsDocument(push, "key");
 
-		assertThat(key.containsField("$slice"), is(true));
+		assertThat(key.containsKey("$slice"), is(true));
 		assertThat((Integer) key.get("$slice"), is(5));
-		assertThat(key.containsField("$each"), is(true));
+		assertThat(key.containsKey("$each"), is(true));
 
-		DBObject key2 = getAsDBObject(push, "key-2");
+		Document key2 = getAsDocument(push, "key-2");
 
-		assertThat(key2.containsField("$slice"), is(true));
+		assertThat(key2.containsKey("$slice"), is(true));
 		assertThat((Integer) key2.get("$slice"), is(-2));
-		assertThat(key2.containsField("$each"), is(true));
+		assertThat(key2.containsKey("$each"), is(true));
 	}
 
 	/**
@@ -933,10 +933,10 @@ public class UpdateMapperUnitTests {
 	public void mapsMinCorrectly() {
 
 		Update update = new Update().min("minfield", 10);
-		DBObject mappedUpdate = mapper.getMappedObject(update.getUpdateObject(),
+		Document mappedUpdate = mapper.getMappedObject(update.getUpdateObject(),
 				context.getPersistentEntity(SimpleValueHolder.class));
 
-		assertThat(mappedUpdate, isBsonObject().containing("$min", new BasicDBObject("minfield", 10)));
+		assertThat(mappedUpdate, isBsonObject().containing("$min", new Document("minfield", 10)));
 	}
 
 	/**
@@ -946,10 +946,10 @@ public class UpdateMapperUnitTests {
 	public void mapsMaxCorrectly() {
 
 		Update update = new Update().max("maxfield", 999);
-		DBObject mappedUpdate = mapper.getMappedObject(update.getUpdateObject(),
+		Document mappedUpdate = mapper.getMappedObject(update.getUpdateObject(),
 				context.getPersistentEntity(SimpleValueHolder.class));
 
-		assertThat(mappedUpdate, isBsonObject().containing("$max", new BasicDBObject("maxfield", 999)));
+		assertThat(mappedUpdate, isBsonObject().containing("$max", new Document("maxfield", 999)));
 	}
 
 	/**
@@ -973,10 +973,14 @@ public class UpdateMapperUnitTests {
 		UpdateMapper mapper = new UpdateMapper(converter);
 
 		Update update = new Update().set("enumAsMapKey", Collections.singletonMap(Allocation.AVAILABLE, 100));
-		DBObject result = mapper.getMappedObject(update.getUpdateObject(),
+		Document mappedUpdate = mapper.getMappedObject(update.getUpdateObject(),
 				mappingContext.getPersistentEntity(ClassWithEnum.class));
 
-		assertThat(result, isBsonObject().containing("$set.enumAsMapKey.V", 100));
+		Document $set = DBObjectTestUtils.getAsDocument(mappedUpdate, "$set");
+		assertThat($set.containsKey("enumAsMapKey"), is(true));
+
+		Document enumAsMapKey = $set.get("enumAsMapKey", Document.class);
+		assertThat(enumAsMapKey.get("AVAILABLE"), is(100));
 	}
 
 	static class DomainTypeWrappingConcreteyTypeHavingListOfInterfaceTypeAttributes {

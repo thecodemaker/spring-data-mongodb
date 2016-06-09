@@ -64,6 +64,7 @@ import org.springframework.data.util.Version;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import com.mongodb.DBObject;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoCollection;
 
@@ -248,10 +249,10 @@ public class AggregationTests {
 
 		assumeTrue(mongoVersion.isGreaterThanOrEqualTo(THREE_DOT_TWO));
 
-		DBCollection coll = mongoTemplate.getCollection(INPUT_COLLECTION);
+		MongoCollection<Document> coll = mongoTemplate.getCollection(INPUT_COLLECTION);
 
-		coll.insert(createDocument("Doc1", "spring", "mongodb", "nosql"));
-		coll.insert(createDocument("Doc2"));
+		coll.insertOne(createDocument("Doc1", "spring", "mongodb", "nosql"));
+		coll.insertOne(createDocument("Doc2"));
 
 		Aggregation agg = newAggregation( //
 				project("tags"), //
@@ -279,10 +280,10 @@ public class AggregationTests {
 
 		assumeTrue(mongoVersion.isGreaterThanOrEqualTo(THREE_DOT_TWO));
 
-		DBCollection coll = mongoTemplate.getCollection(INPUT_COLLECTION);
+		MongoCollection<Document> coll = mongoTemplate.getCollection(INPUT_COLLECTION);
 
-		coll.insert(createDocument("Doc1", "spring", "mongodb", "nosql"));
-		coll.insert(createDocument("Doc2"));
+		coll.insertOne(createDocument("Doc1", "spring", "mongodb", "nosql"));
+		coll.insertOne(createDocument("Doc2"));
 
 		Aggregation agg = newAggregation( //
 				project("tags"), //
@@ -290,11 +291,11 @@ public class AggregationTests {
 				sort(DESC, "n") //
 		);
 
-		AggregationResults<DBObject> results = mongoTemplate.aggregate(agg, INPUT_COLLECTION, DBObject.class);
+		AggregationResults<Document> results = mongoTemplate.aggregate(agg, INPUT_COLLECTION, Document.class);
 
 		assertThat(results, is(notNullValue()));
 
-		List<DBObject> tagCount = results.getMappedResults();
+		List<Document> tagCount = results.getMappedResults();
 
 		assertThat(tagCount, is(notNullValue()));
 		assertThat(tagCount.size(), is(4));
@@ -1204,10 +1205,10 @@ public class AggregationTests {
 				sort(DESC, "count"), //
 				out(tempOutCollection));
 
-		AggregationResults<DBObject> results = mongoTemplate.aggregate(agg, DBObject.class);
+		AggregationResults<Document> results = mongoTemplate.aggregate(agg, Document.class);
 		assertThat(results.getMappedResults(), is(empty()));
 
-		List<DBObject> list = mongoTemplate.findAll(DBObject.class, tempOutCollection);
+		List<Document> list = mongoTemplate.findAll(Document.class, tempOutCollection);
 
 		assertThat(list, hasSize(2));
 		assertThat(list.get(0), isBsonObject().containing("_id", "MALE").containing("count", 3));
