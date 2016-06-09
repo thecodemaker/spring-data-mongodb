@@ -51,13 +51,13 @@ abstract class ReactiveChunk<T> implements Slice<T>, Serializable {
 	 * @param content must not be {@literal null}.
 	 * @param pageable can be {@literal null}.
 	 */
-	public ReactiveChunk(Flux<T> content, Pageable pageable) {
+	public ReactiveChunk(Flux<? extends T> content, Pageable pageable) {
 
 		Assert.notNull(content, "Content must not be null!");
 
-		this.content = content;
+		this.content = (Flux) content;
 		this.pageable = pageable;
-		this.processor = content.toList().doOnSuccess(list -> contentCache = list).subscribe();
+		this.processor = this.content.toList().doOnSuccess(list -> contentCache = list).subscribe();
 	}
 
 	/*

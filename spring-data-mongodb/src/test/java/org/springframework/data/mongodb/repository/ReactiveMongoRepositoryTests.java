@@ -30,6 +30,9 @@ import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.repository.Person.Sex;
 import org.springframework.data.mongodb.repository.support.ReactiveMongoRepositoryFactory;
@@ -101,6 +104,9 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		subscriber.await().assertComplete().assertNoError();
 	}
 
+	/**
+	 * @see DATAMONGO-1444
+	 */
 	@Test
 	public void shouldFindByLastName() throws Exception {
 
@@ -109,6 +115,31 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		assertThat(list, hasSize(2));
 	}
 
+	/**
+	 * @see DATAMONGO-1444
+	 */
+	@Test
+	public void shouldFindMonoOfPage() throws Exception {
+
+		Mono<Page<Person>> pageMono = repository.findMonoPageByLastname("Matthews", new PageRequest(0, 1));
+
+		Page<Person> persons = pageMono.get();
+
+		assertThat(persons.getContent(), hasSize(1));
+		assertThat(persons.getTotalPages(), is(2));
+
+
+		pageMono = repository.findMonoPageByLastname("Matthews", new PageRequest(0, 100));
+
+		persons = pageMono.get();
+
+		assertThat(persons.getContent(), hasSize(2));
+		assertThat(persons.getTotalPages(), is(1));
+	}
+
+	/**
+	 * @see DATAMONGO-1444
+	 */
 	@Test
 	public void shouldFindOneByLastName() throws Exception {
 
@@ -129,8 +160,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		Mono<Person> findOneByLastname(String lastname);
 
-		Flux<Person> findByLastnameStartsWith(String prefix);
+		Mono<Page<Person>> findMonoPageByLastname(String lastname, Pageable pageRequest);
 
-		Mono<Person> findByLastnameEndsWith(String postfix);
 	}
 }

@@ -48,7 +48,7 @@ public class ReactivePageImpl<T> extends ReactiveChunk<T> implements Page<T> {
 	 *          content given, if it is going to be the content of the last page. This is in place to mitigate
 	 *          inconsistencies
 	 */
-	public ReactivePageImpl(Flux<T> content, Pageable pageable, Mono<Long> totalMono) {
+	public ReactivePageImpl(Flux<? extends T> content, Pageable pageable, Mono<Long> totalMono) {
 
 		super(content, pageable);
 

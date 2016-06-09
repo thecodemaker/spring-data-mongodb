@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.core.ReactiveMongoOperations;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.domain.reactive.ReactivePageImpl;
 import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.util.ClassUtils;
@@ -123,8 +124,11 @@ interface ReactiveMongoQueryExecution {
 			}
 
 			Flux<?> flux = operations.find(query, type, collection);
-			// TODO
-			return null;
+
+			Mono<ReactivePageImpl<Object>> pageMono = Mono
+					.fromSupplier(() -> new ReactivePageImpl<Object>(flux, pageable, count));
+
+			return pageMono;
 		}
 	}
 

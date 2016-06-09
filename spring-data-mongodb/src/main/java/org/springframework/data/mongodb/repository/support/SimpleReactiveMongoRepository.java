@@ -75,6 +75,14 @@ public class SimpleReactiveMongoRepository<T, ID extends Serializable> implement
 		return mongoOperations.findById(id, entityInformation.getJavaType(), entityInformation.getCollectionName());
 	}
 
+	@Override
+	public Publisher<T> findOne(Publisher<ID> id) {
+
+		Assert.notNull(id, "The given id must not be null!");
+
+		return findOne(Mono.from(id));
+	}
+
 	public Mono<T> findOne(Mono<ID> mono) {
 
 		Assert.notNull(mono, "The given id must not be null!");
@@ -98,6 +106,15 @@ public class SimpleReactiveMongoRepository<T, ID extends Serializable> implement
 		return mongoOperations.exists(getIdQuery(id), entityInformation.getJavaType(),
 				entityInformation.getCollectionName());
 	}
+
+	@Override
+	public Publisher<Boolean> exists(Publisher<ID> id) {
+
+		Assert.notNull(id, "The given id must not be null!");
+
+		return exists(Mono.from(id));
+	}
+
 
 	public Mono<Boolean> exists(Mono<ID> mono) {
 
