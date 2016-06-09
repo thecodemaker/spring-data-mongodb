@@ -35,7 +35,7 @@ import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.repository.support.ReactiveMongoRepositoryFactory;
 import org.springframework.data.mongodb.repository.support.SimpleReactiveMongoRepository;
 import org.springframework.data.repository.query.DefaultEvaluationContextProvider;
-import org.springframework.data.repository.reactive.ReactiveStreamsPagingAndSortingRepository;
+import org.springframework.data.repository.reactive.ReactivePagingAndSortingRepository;
 import org.springframework.data.repository.reactive.RxJavaPagingAndSortingRepository;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -60,8 +60,8 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 	ReactiveMongoRepositoryFactory factory;
 	private ClassLoader classLoader;
 	private BeanFactory beanFactory;
-	private ReactivePersonRepostitory reactiveRepository;
-	private ReactiveStreamsPersonRepostitory reactiveStreamsPersonRepostitory;
+	private MixedReactivePersonRepostitory reactiveRepository;
+	private ReactivePersonRepostitory reactivePersonRepostitory;
 	private RxJavaPersonRepostitory rxJavaPersonRepostitory;
 
 	ReactivePerson dave, oliver, carter, boyd, stefan, leroi, alicia;
@@ -85,8 +85,8 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 		factory.setBeanFactory(beanFactory);
 		factory.setEvaluationContextProvider(DefaultEvaluationContextProvider.INSTANCE);
 
-		reactiveRepository = factory.getRepository(ReactivePersonRepostitory.class);
-		reactiveStreamsPersonRepostitory = factory.getRepository(ReactiveStreamsPersonRepostitory.class);
+		reactiveRepository = factory.getRepository(MixedReactivePersonRepostitory.class);
+		reactivePersonRepostitory = factory.getRepository(ReactivePersonRepostitory.class);
 		rxJavaPersonRepostitory = factory.getRepository(RxJavaPersonRepostitory.class);
 
 		reactiveRepository.deleteAll().get();
@@ -112,7 +112,7 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 	public void reactiveStreamsMethodsShouldWork() throws Exception {
 
 		TestSubscriber<Boolean> subscriber = new TestSubscriber<>();
-		subscriber.bindTo(reactiveStreamsPersonRepostitory.exists(dave.getId()));
+		subscriber.bindTo(reactivePersonRepostitory.exists(dave.getId()));
 
 		subscriber.awaitAndAssertNextValueCount(1).assertValues(true);
 	}
@@ -124,7 +124,7 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 	public void reactiveStreamsQueryMethodsShouldWork() throws Exception {
 
 		TestSubscriber<ReactivePerson> subscriber = new TestSubscriber<>();
-		subscriber.bindTo(reactiveStreamsPersonRepostitory.findByLastname(boyd.getLastname()));
+		subscriber.bindTo(reactivePersonRepostitory.findByLastname(boyd.getLastname()));
 
 		subscriber.awaitAndAssertNextValueCount(1).assertValues(boyd);
 	}
@@ -206,6 +206,9 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 		subscriber.assertValue(boyd);
 	}
 
+	/**
+	 * @see DATAMONGO-1444
+	 */
 	@Test
 	public void mixedRepositoryShouldWork() throws Exception {
 
@@ -213,18 +216,13 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 
 		assertThat(value, is(equalTo(boyd)));
 	}
-
-	static interface ReactivePersonRepostitory extends ReactiveMongoRepository<ReactivePerson, String> {
-
-		Single<ReactivePerson> findByLastname(String lastname);
-	}
-
-	static interface ReactiveStreamsPersonRepostitory
-			extends ReactiveStreamsPagingAndSortingRepository<ReactivePerson, String> {
+	
+	static interface ReactivePersonRepostitory
+			extends ReactivePagingAndSortingRepository<ReactivePerson, String> {
 
 		Publisher<ReactivePerson> findByLastname(String lastname);
 	}
-
+	
 	static interface RxJavaPersonRepostitory extends RxJavaPagingAndSortingRepository<ReactivePerson, String> {
 
 		Observable<ReactivePerson> findByFirstnameAndLastname(String firstname, String lastname);
@@ -232,6 +230,11 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 		Single<ReactivePerson> findByLastname(String lastname);
 
 		Single<ProjectedPerson> findProjectedByLastname(String lastname);
+	}
+
+	static interface MixedReactivePersonRepostitory extends ReactiveMongoRepository<ReactivePerson, String> {
+
+		Single<ReactivePerson> findByLastname(String lastname);
 	}
 
 	@Data
