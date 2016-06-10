@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.data.mongodb.repository.query;
 
 import org.springframework.core.convert.converter.Converter;
@@ -23,6 +22,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.core.ReactiveMongoOperations;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.domain.reactive.ReactivePageImpl;
+import org.springframework.data.mongodb.domain.reactive.ReactiveSliceImpl;
 import org.springframework.data.repository.query.ResultProcessor;
 import org.springframework.data.repository.query.ReturnedType;
 import org.springframework.util.ClassUtils;
@@ -33,7 +33,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * TODO: Projections, GeoNear
+ * TODO: GeoNear
+ * 
+ * @author Mark Paluch
+ * @since 2.0
  */
 interface ReactiveMongoQueryExecution {
 
@@ -42,7 +45,7 @@ interface ReactiveMongoQueryExecution {
 	/**
 	 * {@link ReactiveMongoQueryExecution} for collection returning queries.
 	 *
-	 * @author Oliver Gierke
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class CollectionExecution implements ReactiveMongoQueryExecution {
@@ -50,10 +53,6 @@ interface ReactiveMongoQueryExecution {
 		private final @NonNull ReactiveMongoOperations operations;
 		private final Pageable pageable;
 
-		/*
-		 * (non-Javadoc)
-		 * @see org.springframework.data.mongodb.repository.query.AbstractMongoQuery.Execution#execute(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-		 */
 		@Override
 		public Object execute(Query query, Class<?> type, String collection) {
 			return operations.find(query.with(pageable), type, collection);
@@ -63,9 +62,7 @@ interface ReactiveMongoQueryExecution {
 	/**
 	 * {@link ReactiveMongoQueryExecution} for {@link Slice} query methods.
 	 *
-	 * @author Oliver Gierke
-	 * @author Christoph Strobl
-	 * @since 1.5
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class SlicedExecution implements ReactiveMongoQueryExecution {
@@ -73,10 +70,6 @@ interface ReactiveMongoQueryExecution {
 		private final @NonNull ReactiveMongoOperations operations;
 		private final @NonNull Pageable pageable;
 
-		/*
-		 * (non-Javadoc)
-		 * @see org.springframework.data.mongodb.repository.query.AbstractMongoQuery.Execution#execute(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-		 */
 		@Override
 		@SuppressWarnings({ "unchecked", "rawtypes" })
 		public Object execute(Query query, Class<?> type, String collection) {
@@ -87,16 +80,14 @@ interface ReactiveMongoQueryExecution {
 			Query modifiedQuery = query.with(pageable).limit(pageSize + 1);
 			Flux<?> flux = operations.find(modifiedQuery, type, collection);
 
-			// TODO: Here we don't know *yet* whether there is next
-			// return new ReactiveSliceImpl<>(flux, pageable, false);
-			return null;
+			return Mono.fromSupplier(() -> new ReactiveSliceImpl<>(flux, pageable));
 		}
 	}
 
 	/**
 	 * {@link ReactiveMongoQueryExecution} for pagination queries.
 	 *
-	 * @author Oliver Gierke
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class PagedExecution implements ReactiveMongoQueryExecution {
@@ -104,10 +95,6 @@ interface ReactiveMongoQueryExecution {
 		private final @NonNull ReactiveMongoOperations operations;
 		private final @NonNull Pageable pageable;
 
-		/*
-		 * (non-Javadoc)
-		 * @see org.springframework.data.mongodb.repository.query.AbstractMongoQuery.Execution#execute(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-		 */
 		@Override
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		public Object execute(Query query, Class<?> type, String collection) {
@@ -125,17 +112,14 @@ interface ReactiveMongoQueryExecution {
 
 			Flux<?> flux = operations.find(query, type, collection);
 
-			Mono<ReactivePageImpl<Object>> pageMono = Mono
-					.fromSupplier(() -> new ReactivePageImpl<Object>(flux, pageable, count));
-
-			return pageMono;
+			return Mono.fromSupplier(() -> new ReactivePageImpl<>(flux, pageable, count));
 		}
 	}
 
 	/**
 	 * {@link ReactiveMongoQueryExecution} to return a single entity.
 	 *
-	 * @author Oliver Gierke
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class SingleEntityExecution implements ReactiveMongoQueryExecution {
@@ -143,10 +127,6 @@ interface ReactiveMongoQueryExecution {
 		private final ReactiveMongoOperations operations;
 		private final boolean countProjection;
 
-		/*
-		 * (non-Javadoc)
-		 * @see org.springframework.data.mongodb.repository.query.AbstractMongoQuery.Execution#execute(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-		 */
 		@Override
 		public Object execute(Query query, Class<?> type, String collection) {
 			return countProjection ? operations.count(query, type, collection) : operations.findOne(query, type, collection);
@@ -156,7 +136,7 @@ interface ReactiveMongoQueryExecution {
 	/**
 	 * {@link ReactiveMongoQueryExecution} removing documents matching the query.
 	 *
-	 * @since 1.5
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class DeleteExecution implements ReactiveMongoQueryExecution {
@@ -182,9 +162,6 @@ interface ReactiveMongoQueryExecution {
 	/**
 	 * An {@link ReactiveMongoQueryExecution} that wraps the results of the given delegate with the given result
 	 * processing.
-	 *
-	 * @author Oliver Gierke
-	 * @since 1.9
 	 */
 	@RequiredArgsConstructor
 	static final class ResultProcessingExecution implements ReactiveMongoQueryExecution {
@@ -192,10 +169,6 @@ interface ReactiveMongoQueryExecution {
 		private final @NonNull ReactiveMongoQueryExecution delegate;
 		private final @NonNull Converter<Object, Object> converter;
 
-		/*
-		 * (non-Javadoc)
-		 * @see org.springframework.data.mongodb.repository.query.AbstractMongoQuery.Execution#execute(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-		 */
 		@Override
 		public Object execute(Query query, Class<?> type, String collection) {
 			return converter.convert(delegate.execute(query, type, collection));
@@ -205,8 +178,7 @@ interface ReactiveMongoQueryExecution {
 	/**
 	 * A {@link Converter} to post-process all source objects using the given {@link ResultProcessor}.
 	 *
-	 * @author Oliver Gierke
-	 * @since 1.9
+	 * @author Mark Paluch
 	 */
 	@RequiredArgsConstructor
 	static final class ResultProcessingConverter implements Converter<Object, Object> {

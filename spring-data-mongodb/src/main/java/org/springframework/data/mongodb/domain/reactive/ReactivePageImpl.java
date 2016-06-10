@@ -30,6 +30,7 @@ import reactor.core.publisher.MonoProcessor;
  *
  * @param <T> the type of which the page consists.
  * @author Mark Paluch
+ * @since 2.0
  */
 public class ReactivePageImpl<T> extends ReactiveChunk<T> implements Page<T> {
 
@@ -54,16 +55,6 @@ public class ReactivePageImpl<T> extends ReactiveChunk<T> implements Page<T> {
 
 		this.pageable = pageable;
 		this.totalMono = totalMono.subscribe();
-	}
-
-	/**
-	 * Creates a new {@link ReactivePageImpl} with the given content. This will result in the created {@link Page} being
-	 * identical to the entire {@link List}.
-	 *
-	 * @param content must not be {@literal null}.
-	 */
-	public ReactivePageImpl(List<T> content) {
-		this(Flux.fromIterable(content), null, Mono.just(null == content ? 0L : (long) content.size()));
 	}
 
 	/*

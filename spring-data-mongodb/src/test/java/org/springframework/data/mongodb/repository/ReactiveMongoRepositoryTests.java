@@ -33,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.data.mongodb.repository.Person.Sex;
 import org.springframework.data.mongodb.repository.support.ReactiveMongoRepositoryFactory;
@@ -136,6 +137,27 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		assertThat(persons.getContent(), hasSize(2));
 		assertThat(persons.getTotalPages(), is(1));
 	}
+	
+	/**
+	 * @see DATAMONGO-1444
+	 */
+	@Test
+	public void shouldFindMonoOfSlice() throws Exception {
+
+		Mono<Slice<Person>> pageMono = repository.findMonoSliceByLastname("Matthews", new PageRequest(0, 1));
+
+		Slice<Person> persons = pageMono.get();
+
+		assertThat(persons.getContent(), hasSize(1));
+		assertThat(persons.hasNext(), is(true));
+
+		pageMono = repository.findMonoSliceByLastname("Matthews", new PageRequest(0, 100));
+
+		persons = pageMono.get();
+
+		assertThat(persons.getContent(), hasSize(2));
+		assertThat(persons.hasNext(), is(false));
+	}
 
 	/**
 	 * @see DATAMONGO-1444
@@ -161,6 +183,8 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		Mono<Person> findOneByLastname(String lastname);
 
 		Mono<Page<Person>> findMonoPageByLastname(String lastname, Pageable pageRequest);
+		
+		Mono<Slice<Person>> findMonoSliceByLastname(String lastname, Pageable pageRequest);
 
 	}
 }
