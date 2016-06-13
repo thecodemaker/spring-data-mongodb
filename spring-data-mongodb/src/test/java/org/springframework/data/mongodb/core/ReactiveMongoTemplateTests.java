@@ -88,7 +88,7 @@ public class ReactiveMongoTemplateTests {
 	private void queryMongoVersionIfNecessary() {
 
 		if (mongoVersion == null) {
-			org.bson.Document result = template.executeCommand("{ buildInfo: 1 }").next().block();
+			org.bson.Document result = template.executeCommand("{ buildInfo: 1 }").block();
 			mongoVersion = org.springframework.data.util.Version.parse(result.get("version").toString());
 		}
 	}
