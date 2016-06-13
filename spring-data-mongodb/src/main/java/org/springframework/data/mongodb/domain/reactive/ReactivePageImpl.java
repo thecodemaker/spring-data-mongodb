@@ -69,7 +69,7 @@ public class ReactivePageImpl<T> extends ReactiveChunk<T> implements Page<T> {
 	private long getTotal0() {
 
 		if (totalValueCache == null) {
-			long total = totalMono.get();
+			long total = totalMono.block();
 			List<T> content = getContent();
 			this.totalValueCache = !content.isEmpty() && pageable != null
 					&& pageable.getOffset() + pageable.getPageSize() > total ? pageable.getOffset() + content.size() : total;

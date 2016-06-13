@@ -57,7 +57,7 @@ abstract class ReactiveChunk<T> implements Slice<T>, Serializable {
 
 		this.content = (Flux) content;
 		this.pageable = pageable;
-		this.processor = this.content.toList().doOnSuccess(list -> {
+		this.processor = this.content.collectList().doOnSuccess(list -> {
 
 			if (list.size() > pageable.getPageSize()) {
 				contentCache = list.subList(0, pageable.getPageSize());
@@ -193,7 +193,7 @@ abstract class ReactiveChunk<T> implements Slice<T>, Serializable {
 			return contentCache;
 		}
 
-		List<T> list = processor.get();
+		List<T> list = processor.block();
 
 		if (list.size() > pageable.getPageSize()) {
 			return list.subList(0, pageable.getPageSize());
@@ -209,7 +209,7 @@ abstract class ReactiveChunk<T> implements Slice<T>, Serializable {
 	 */
 	protected boolean containsMore() {
 
-		List<T> list = processor.get();
+		List<T> list = processor.block();
 		
 		if (list.size() > pageable.getPageSize()) {
 			return true;

@@ -85,7 +85,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		repository = factory.getRepository(ReactivePersonRepostitory.class);
 
-		repository.deleteAll().get();
+		repository.deleteAll().block();
 
 		dave = new Person("Dave", "Matthews", 42);
 		oliver = new Person("Oliver August", "Matthews", 4);
@@ -99,7 +99,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		alicia = new Person("Alicia", "Keys", 30, Sex.FEMALE);
 
-		TestSubscriber<Person> subscriber = new TestSubscriber<>();
+		TestSubscriber<Person> subscriber = TestSubscriber.create();
 		repository.save(Arrays.asList(oliver, dave, carter, boyd, stefan, leroi, alicia)).subscribe(subscriber);
 
 		subscriber.await().assertComplete().assertNoError();
@@ -111,7 +111,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 	@Test
 	public void shouldFindByLastName() throws Exception {
 
-		List<Person> list = repository.findByLastname("Matthews").toList().get();
+		List<Person> list = repository.findByLastname("Matthews").collectList().block();
 
 		assertThat(list, hasSize(2));
 	}
@@ -124,7 +124,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		Mono<Page<Person>> pageMono = repository.findMonoPageByLastname("Matthews", new PageRequest(0, 1));
 
-		Page<Person> persons = pageMono.get();
+		Page<Person> persons = pageMono.block();
 
 		assertThat(persons.getContent(), hasSize(1));
 		assertThat(persons.getTotalPages(), is(2));
@@ -132,7 +132,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		pageMono = repository.findMonoPageByLastname("Matthews", new PageRequest(0, 100));
 
-		persons = pageMono.get();
+		persons = pageMono.block();
 
 		assertThat(persons.getContent(), hasSize(2));
 		assertThat(persons.getTotalPages(), is(1));
@@ -146,14 +146,14 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 
 		Mono<Slice<Person>> pageMono = repository.findMonoSliceByLastname("Matthews", new PageRequest(0, 1));
 
-		Slice<Person> persons = pageMono.get();
+		Slice<Person> persons = pageMono.block();
 
 		assertThat(persons.getContent(), hasSize(1));
 		assertThat(persons.hasNext(), is(true));
 
 		pageMono = repository.findMonoSliceByLastname("Matthews", new PageRequest(0, 100));
 
-		persons = pageMono.get();
+		persons = pageMono.block();
 
 		assertThat(persons.getContent(), hasSize(2));
 		assertThat(persons.hasNext(), is(false));
@@ -165,7 +165,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 	@Test
 	public void shouldFindOneByLastName() throws Exception {
 
-		Person carter = repository.findOneByLastname("Beauford").get();
+		Person carter = repository.findOneByLastname("Beauford").block();
 
 		assertThat(carter.getFirstname(), is(equalTo("Carter")));
 	}

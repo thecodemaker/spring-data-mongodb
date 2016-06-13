@@ -89,7 +89,7 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 		reactivePersonRepostitory = factory.getRepository(ReactivePersonRepostitory.class);
 		rxJavaPersonRepostitory = factory.getRepository(RxJavaPersonRepostitory.class);
 
-		reactiveRepository.deleteAll().get();
+		reactiveRepository.deleteAll().block();
 
 		dave = new ReactivePerson("Dave", "Matthews", 42);
 		oliver = new ReactivePerson("Oliver August", "Matthews", 4);
@@ -99,7 +99,7 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 		leroi = new ReactivePerson("Leroi", "Moore", 41);
 		alicia = new ReactivePerson("Alicia", "Keys", 30);
 
-		TestSubscriber<ReactivePerson> subscriber = new TestSubscriber<>();
+		TestSubscriber<ReactivePerson> subscriber = TestSubscriber.create();
 		reactiveRepository.save(Arrays.asList(oliver, dave, carter, boyd, stefan, leroi, alicia)).subscribe(subscriber);
 
 		subscriber.await().assertComplete().assertNoError();
@@ -111,8 +111,7 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 	@Test
 	public void reactiveStreamsMethodsShouldWork() throws Exception {
 
-		TestSubscriber<Boolean> subscriber = new TestSubscriber<>();
-		subscriber.bindTo(reactivePersonRepostitory.exists(dave.getId()));
+		TestSubscriber<Boolean> subscriber = TestSubscriber.subscribe(reactivePersonRepostitory.exists(dave.getId()));
 
 		subscriber.awaitAndAssertNextValueCount(1).assertValues(true);
 	}
@@ -123,8 +122,8 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 	@Test
 	public void reactiveStreamsQueryMethodsShouldWork() throws Exception {
 
-		TestSubscriber<ReactivePerson> subscriber = new TestSubscriber<>();
-		subscriber.bindTo(reactivePersonRepostitory.findByLastname(boyd.getLastname()));
+		TestSubscriber<ReactivePerson> subscriber = TestSubscriber
+				.subscribe(reactivePersonRepostitory.findByLastname(boyd.getLastname()));
 
 		subscriber.awaitAndAssertNextValueCount(1).assertValues(boyd);
 	}
@@ -216,13 +215,12 @@ public class ConvertingReactiveMongoRepositoryTests implements BeanClassLoaderAw
 
 		assertThat(value, is(equalTo(boyd)));
 	}
-	
-	static interface ReactivePersonRepostitory
-			extends ReactivePagingAndSortingRepository<ReactivePerson, String> {
+
+	static interface ReactivePersonRepostitory extends ReactivePagingAndSortingRepository<ReactivePerson, String> {
 
 		Publisher<ReactivePerson> findByLastname(String lastname);
 	}
-	
+
 	static interface RxJavaPersonRepostitory extends RxJavaPagingAndSortingRepository<ReactivePerson, String> {
 
 		Observable<ReactivePerson> findByFirstnameAndLastname(String firstname, String lastname);
