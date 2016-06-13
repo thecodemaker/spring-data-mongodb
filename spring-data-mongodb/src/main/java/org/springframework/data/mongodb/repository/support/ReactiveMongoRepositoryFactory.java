@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.support.DefaultConversionService;
 import org.springframework.data.mapping.context.MappingContext;
 import org.springframework.data.mapping.model.MappingException;
@@ -58,6 +59,7 @@ public class ReactiveMongoRepositoryFactory extends RepositoryFactorySupport {
 
 	private final ReactiveMongoOperations operations;
 	private final MappingContext<? extends MongoPersistentEntity<?>, MongoPersistentProperty> mappingContext;
+	private final ConversionService conversionService;
 
 	/**
 	 * Creates a new {@link ReactiveMongoRepositoryFactory} with the given {@link ReactiveMongoOperations}.
@@ -73,6 +75,7 @@ public class ReactiveMongoRepositoryFactory extends RepositoryFactorySupport {
 
 		DefaultConversionService conversionService = new DefaultConversionService();
 		QueryExecutionConverters.registerConvertersIn(conversionService);
+		this.conversionService = conversionService;
 		setConversionService(conversionService);
 	}
 
@@ -103,7 +106,7 @@ public class ReactiveMongoRepositoryFactory extends RepositoryFactorySupport {
 	 */
 	@Override
 	protected QueryLookupStrategy getQueryLookupStrategy(Key key, EvaluationContextProvider evaluationContextProvider) {
-		return new MongoQueryLookupStrategy(operations, evaluationContextProvider, mappingContext);
+		return new MongoQueryLookupStrategy(operations, evaluationContextProvider, mappingContext, conversionService);
 	}
 
 	/*
@@ -140,14 +143,17 @@ public class ReactiveMongoRepositoryFactory extends RepositoryFactorySupport {
 		private final ReactiveMongoOperations operations;
 		private final EvaluationContextProvider evaluationContextProvider;
 		MappingContext<? extends MongoPersistentEntity<?>, MongoPersistentProperty> mappingContext;
+		final ConversionService conversionService;
 
 		public MongoQueryLookupStrategy(ReactiveMongoOperations operations,
 				EvaluationContextProvider evaluationContextProvider,
-				MappingContext<? extends MongoPersistentEntity<?>, MongoPersistentProperty> mappingContext) {
+				MappingContext<? extends MongoPersistentEntity<?>, MongoPersistentProperty> mappingContext,
+				ConversionService conversionService) {
 
 			this.operations = operations;
 			this.evaluationContextProvider = evaluationContextProvider;
 			this.mappingContext = mappingContext;
+			this.conversionService = conversionService;
 		}
 
 		/*
@@ -164,11 +170,12 @@ public class ReactiveMongoRepositoryFactory extends RepositoryFactorySupport {
 			if (namedQueries.hasQuery(namedQueryName)) {
 				String namedQuery = namedQueries.getQuery(namedQueryName);
 				return new ReactiveStringBasedMongoQuery(namedQuery, queryMethod, operations, EXPRESSION_PARSER,
-						evaluationContextProvider);
+						evaluationContextProvider, conversionService);
 			} else if (queryMethod.hasAnnotatedQuery()) {
-				return new ReactiveStringBasedMongoQuery(queryMethod, operations, EXPRESSION_PARSER, evaluationContextProvider);
+				return new ReactiveStringBasedMongoQuery(queryMethod, operations, EXPRESSION_PARSER, evaluationContextProvider,
+						conversionService);
 			} else {
-				return new ReactivePartTreeMongoQuery(queryMethod, operations);
+				return new ReactivePartTreeMongoQuery(queryMethod, operations, conversionService);
 			}
 		}
 	}

@@ -15,6 +15,8 @@
  */
 package org.springframework.data.mongodb.repository.query;
 
+import org.reactivestreams.Publisher;
+import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.data.convert.EntityInstantiators;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -30,7 +32,11 @@ import org.springframework.data.mongodb.repository.query.ReactiveMongoQueryExecu
 import org.springframework.data.repository.query.ParameterAccessor;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
+import org.springframework.data.repository.util.QueryExecutionConverters;
 import org.springframework.util.Assert;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Base class for reactive {@link RepositoryQuery} implementations for Mongo.
@@ -42,21 +48,26 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 	private final MongoQueryMethod method;
 	private final ReactiveMongoOperations operations;
 	private final EntityInstantiators instantiators;
+	private final ConversionService conversionService;
 
 	/**
 	 * Creates a new {@link AbstractReactiveMongoQuery} from the given {@link MongoQueryMethod} and
 	 * {@link MongoOperations}.
-	 *
+	 * 
 	 * @param method must not be {@literal null}.
 	 * @param operations must not be {@literal null}.
+	 * @param conversionService must not be {@literal null}.
 	 */
-	public AbstractReactiveMongoQuery(MongoQueryMethod method, ReactiveMongoOperations operations) {
+	public AbstractReactiveMongoQuery(MongoQueryMethod method, ReactiveMongoOperations operations,
+			ConversionService conversionService) {
 
 		Assert.notNull(method, "MongoQueryMethod must not be null!");
 		Assert.notNull(operations, "ReactiveMongoOperations must not be null!");
+		Assert.notNull(conversionService, "ReactiveMongoOperations must not be null!");
 
 		this.method = method;
 		this.operations = operations;
+		this.conversionService = conversionService;
 		this.instantiators = new EntityInstantiators();
 	}
 
@@ -74,7 +85,26 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 	 */
 	public Object execute(Object[] parameters) {
 
-		MongoParameterAccessor accessor = new MongoParametersParameterAccessor(method, parameters);
+		boolean hasReactiveParameters = hasReactiveWrapperParameter();
+
+		if (hasReactiveParameters) {
+			return executeDeferred(parameters);
+		}
+
+		return execute(new MongoParametersParameterAccessor(method, parameters));
+	}
+
+	private Object executeDeferred(Object[] parameters) {
+		if (getQueryMethod().isCollectionQuery()) {
+			return Flux.defer(() -> (Publisher<Object>) execute(
+					new ReactiveMongoParameterAccessor(method, parameters, conversionService)));
+		}
+
+		return Mono.defer(
+				() -> (Mono<Object>) execute(new ReactiveMongoParameterAccessor(method, parameters, conversionService)));
+	}
+
+	private Object execute(MongoParameterAccessor accessor) {
 		Query query = createQuery(new ConvertingParameterAccessor(operations.getConverter(), accessor));
 
 		applyQueryMetaAttributesWhenPresent(query);
@@ -88,6 +118,17 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 		return execution.execute(query, processor.getReturnedType().getDomainType(), collection);
 	}
 
+	private boolean hasReactiveWrapperParameter() {
+		boolean hasReactiveParameters = false;
+		for (MongoParameters.MongoParameter mongoParameter : method.getParameters()) {
+			if (QueryExecutionConverters.supports(mongoParameter.getType())
+					&& !QueryExecutionConverters.supportsUnwrapping(mongoParameter.getType())) {
+				hasReactiveParameters = true;
+			}
+		}
+		return hasReactiveParameters;
+	}
+
 	/**
 	 * Returns the execution instance to use.
 	 *
@@ -98,10 +139,10 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 	 */
 	private ReactiveMongoQueryExecution getExecution(Query query, MongoParameterAccessor accessor,
 			Converter<Object, Object> resultProcessing) {
-		return new ResultProcessingExecution(getExecutionToWrap(query, accessor), resultProcessing);
+		return new ResultProcessingExecution(getExecutionToWrap(accessor), resultProcessing);
 	}
 
-	private ReactiveMongoQueryExecution getExecutionToWrap(Query query, MongoParameterAccessor accessor) {
+	private ReactiveMongoQueryExecution getExecutionToWrap(MongoParameterAccessor accessor) {
 
 		if (isDeleteQuery()) {
 			return new DeleteExecution(operations, method);
