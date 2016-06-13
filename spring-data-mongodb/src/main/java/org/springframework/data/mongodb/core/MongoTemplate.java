@@ -563,11 +563,11 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware, 
 	}
 
 	public IndexOperations indexOps(String collectionName) {
-		return new DefaultIndexOperations(this, collectionName);
+		return new DefaultIndexOperations(getMongoDbFactory(), collectionName);
 	}
 
 	public IndexOperations indexOps(Class<?> entityClass) {
-		return new DefaultIndexOperations(this, determineCollectionName(entityClass));
+		return new DefaultIndexOperations(getMongoDbFactory(), determineCollectionName(entityClass));
 	}
 
 	public BulkOperations bulkOps(BulkMode bulkMode, String collectionName) {
@@ -2244,7 +2244,7 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware, 
 	 * @param exceptionTranslator the {@link PersistenceExceptionTranslator} to be used for translation
 	 * @return
 	 */
-	private static RuntimeException potentiallyConvertRuntimeException(RuntimeException ex,
+	static RuntimeException potentiallyConvertRuntimeException(RuntimeException ex,
 			PersistenceExceptionTranslator exceptionTranslator) {
 		RuntimeException resolved = exceptionTranslator.translateExceptionIfPossible(ex);
 		return resolved == null ? ex : resolved;
