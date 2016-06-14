@@ -13,63 +13,69 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.data.mongodb.repository.query;
 
-import org.springframework.core.convert.ConversionService;
+import org.springframework.data.repository.query.ReactiveWrapperConverters;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoProcessor;
-import rx.Observable;
-import rx.Single;
 
 /**
+ * Reactive {@link org.springframework.data.repository.query.ParametersParameterAccessor} implementation that subscribes
+ * to reactive parameter wrapper types upon creation. This class performs synchronization when acessing parameters.
+ * 
  * @author Mark Paluch
  */
 class ReactiveMongoParameterAccessor extends MongoParametersParameterAccessor {
 
 	private final Object[] values;
-	private MonoProcessor<?>[] subscribable;
+	private final MonoProcessor<?>[] subscriptions;
 
-	public ReactiveMongoParameterAccessor(MongoQueryMethod method, Object[] values, ConversionService conversionService) {
+	public ReactiveMongoParameterAccessor(MongoQueryMethod method, Object[] values) {
 
 		super(method, values);
 
 		this.values = values;
-		this.subscribable = new MonoProcessor<?>[values.length];
+		this.subscriptions = new MonoProcessor<?>[values.length];
 
 		for (int i = 0; i < values.length; i++) {
 
-			// TODO: Cleanup this hack to support absence of RxJava.
-			if (values[i] instanceof Observable) {
-				values[i] = conversionService.convert(values[i], Flux.class);
+			Object value = values[i];
+
+			if (value == null) {
+				continue;
 			}
 
-			if (values[i] instanceof Single) {
-				values[i] = conversionService.convert(values[i], Mono.class);
+			if (!ReactiveWrapperConverters.supports(value.getClass())) {
+				continue;
 			}
 
-			if (values[i] instanceof Flux) {
-				subscribable[i] = ((Flux) values[i]).collectList().subscribe();
-			}
-
-			if (values[i] instanceof Mono) {
-				subscribable[i] = ((Mono) values[i]).subscribe();
+			if (ReactiveWrapperConverters.isSingleLike(value.getClass())) {
+				subscriptions[i] = ReactiveWrapperConverters.toWrapper(value, Mono.class).subscribe();
+			} else {
+				subscriptions[i] = ReactiveWrapperConverters.toWrapper(value, Flux.class).collectList().subscribe();
 			}
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see org.springframework.data.repository.query.ParametersParameterAccessor#getValue(int)
+	 */
+	@SuppressWarnings("unchecked")
 	@Override
 	protected <T> T getValue(int index) {
 
-		if (subscribable[index] != null) {
-			return (T) subscribable[index].block();
+		if (subscriptions[index] != null) {
+			return (T) subscriptions[index].block();
 		}
 
 		return super.getValue(index);
 	}
 
+	/* (non-Javadoc)
+	 * @see org.springframework.data.mongodb.repository.query.MongoParametersParameterAccessor#getValues()
+	 */
 	@Override
 	public Object[] getValues() {
 
@@ -80,10 +86,9 @@ class ReactiveMongoParameterAccessor extends MongoParametersParameterAccessor {
 		return result;
 	}
 
-	/*
-		* (non-Javadoc)
-		* @see org.springframework.data.repository.query.ParameterAccessor#getBindableValue(int)
-		*/
+	/* (non-Javadoc)
+	 * @see org.springframework.data.repository.query.ParametersParameterAccessor#getBindableValue(int)
+	 */
 	public Object getBindableValue(int index) {
 		return getValue(getParameters().getBindableParameter(index).getIndex());
 	}

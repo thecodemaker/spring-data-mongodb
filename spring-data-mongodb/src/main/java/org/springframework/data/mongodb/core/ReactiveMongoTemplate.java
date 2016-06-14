@@ -120,7 +120,7 @@ import reactor.core.tuple.Tuple2;
  * Primary implementation of {@link ReactiveMongoOperations}.
  *
  * @author Mark Paluch
- * @since 2.0.
+ * @since 2.0
  */
 public class ReactiveMongoTemplate implements ReactiveMongoOperations, ApplicationContextAware {
 
@@ -1378,10 +1378,6 @@ public class ReactiveMongoTemplate implements ReactiveMongoOperations, Applicati
 				new ReadDocumentCallback<T>(mongoConverter, entityClass, collectionName), collectionName);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see org.springframework.data.mongodb.core.MongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.String)
-	 */
 	/* (non-Javadoc)
 	 * @see org.springframework.data.mongodb.core.ReactiveMongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.String)
 	 */
@@ -1391,10 +1387,6 @@ public class ReactiveMongoTemplate implements ReactiveMongoOperations, Applicati
 		return findAllAndRemove(query, null, collectionName);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see org.springframework.data.mongodb.core.MongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.Class)
-	 */
 	/* (non-Javadoc)
 	 * @see org.springframework.data.mongodb.core.ReactiveMongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.Class)
 	 */
@@ -1403,10 +1395,6 @@ public class ReactiveMongoTemplate implements ReactiveMongoOperations, Applicati
 		return findAllAndRemove(query, entityClass, determineCollectionName(entityClass));
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see org.springframework.data.mongodb.core.MongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
-	 */
 	/* (non-Javadoc)
 	 * @see org.springframework.data.mongodb.core.ReactiveMongoOperations#findAllAndRemove(org.springframework.data.mongodb.core.query.Query, java.lang.Class, java.lang.String)
 	 */

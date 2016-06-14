@@ -22,7 +22,6 @@ import static org.springframework.data.domain.Sort.Direction.*;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -134,7 +133,6 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		assertThat(persons.getContent(), hasSize(1));
 		assertThat(persons.getTotalPages(), is(2));
 
-
 		pageMono = repository.findMonoPageByLastname("Matthews", new PageRequest(0, 100));
 
 		persons = pageMono.block();
@@ -142,7 +140,7 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 		assertThat(persons.getContent(), hasSize(2));
 		assertThat(persons.getTotalPages(), is(1));
 	}
-	
+
 	/**
 	 * @see DATAMONGO-1444
 	 */
@@ -203,7 +201,8 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 	@Test
 	public void shouldFindByPublisherOfLastNameInAndAgeGreater() throws Exception {
 
-		List<Person> persons = repository.findByLastnameInAndAgeGreaterThan(Flux.just("Beauford", "Matthews"), 41).collectList().block();
+		List<Person> persons = repository.findByLastnameInAndAgeGreaterThan(Flux.just("Beauford", "Matthews"), 41)
+				.collectList().block();
 
 		assertThat(persons, hasItems(carter, dave));
 	}
@@ -214,7 +213,8 @@ public class ReactiveMongoRepositoryTests implements BeanClassLoaderAware, BeanF
 	@Test
 	public void shouldFindUsingPublishersInStringQuery() throws Exception {
 
-		List<Person> persons = repository.findStringQuery(Flux.just("Beauford", "Matthews"), Mono.just(41)).collectList().block();
+		List<Person> persons = repository.findStringQuery(Flux.just("Beauford", "Matthews"), Mono.just(41)).collectList()
+				.block();
 
 		assertThat(persons, hasItems(carter, dave));
 	}

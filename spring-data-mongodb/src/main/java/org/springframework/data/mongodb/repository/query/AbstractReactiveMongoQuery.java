@@ -30,16 +30,16 @@ import org.springframework.data.mongodb.repository.query.ReactiveMongoQueryExecu
 import org.springframework.data.mongodb.repository.query.ReactiveMongoQueryExecution.SingleEntityExecution;
 import org.springframework.data.mongodb.repository.query.ReactiveMongoQueryExecution.SlicedExecution;
 import org.springframework.data.repository.query.ParameterAccessor;
+import org.springframework.data.repository.query.ReactiveWrapperConverters;
 import org.springframework.data.repository.query.RepositoryQuery;
 import org.springframework.data.repository.query.ResultProcessor;
-import org.springframework.data.repository.util.QueryExecutionConverters;
 import org.springframework.util.Assert;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Base class for reactive {@link RepositoryQuery} implementations for Mongo.
+ * Base class for reactive {@link RepositoryQuery} implementations for MongoDB.
  *
  * @author Mark Paluch
  */
@@ -48,7 +48,6 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 	private final MongoQueryMethod method;
 	private final ReactiveMongoOperations operations;
 	private final EntityInstantiators instantiators;
-	private final ConversionService conversionService;
 
 	/**
 	 * Creates a new {@link AbstractReactiveMongoQuery} from the given {@link MongoQueryMethod} and
@@ -63,11 +62,9 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 
 		Assert.notNull(method, "MongoQueryMethod must not be null!");
 		Assert.notNull(operations, "ReactiveMongoOperations must not be null!");
-		Assert.notNull(conversionService, "ReactiveMongoOperations must not be null!");
 
 		this.method = method;
 		this.operations = operations;
-		this.conversionService = conversionService;
 		this.instantiators = new EntityInstantiators();
 	}
 
@@ -94,14 +91,14 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 		return execute(new MongoParametersParameterAccessor(method, parameters));
 	}
 
+	@SuppressWarnings("unchecked")
 	private Object executeDeferred(Object[] parameters) {
+
 		if (getQueryMethod().isCollectionQuery()) {
-			return Flux.defer(() -> (Publisher<Object>) execute(
-					new ReactiveMongoParameterAccessor(method, parameters, conversionService)));
+			return Flux.defer(() -> (Publisher<Object>) execute(new ReactiveMongoParameterAccessor(method, parameters)));
 		}
 
-		return Mono.defer(
-				() -> (Mono<Object>) execute(new ReactiveMongoParameterAccessor(method, parameters, conversionService)));
+		return Mono.defer(() -> (Mono<Object>) execute(new ReactiveMongoParameterAccessor(method, parameters)));
 	}
 
 	private Object execute(MongoParameterAccessor accessor) {
@@ -119,14 +116,13 @@ public abstract class AbstractReactiveMongoQuery implements RepositoryQuery {
 	}
 
 	private boolean hasReactiveWrapperParameter() {
-		boolean hasReactiveParameters = false;
+
 		for (MongoParameters.MongoParameter mongoParameter : method.getParameters()) {
-			if (QueryExecutionConverters.supports(mongoParameter.getType())
-					&& !QueryExecutionConverters.supportsUnwrapping(mongoParameter.getType())) {
-				hasReactiveParameters = true;
+			if (ReactiveWrapperConverters.supports(mongoParameter.getType())) {
+				return true;
 			}
 		}
-		return hasReactiveParameters;
+		return false;
 	}
 
 	/**
