@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2015 the original author or authors.
+ * Copyright 2010-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.data.mongodb.test.util.IsBsonObject.*;
 
 import java.math.BigInteger;
 import java.util.Collections;
@@ -367,8 +368,8 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 	@Test
 	public void aggregateShouldHonorReadPreferenceWhenSet() {
 
-		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class))).thenReturn(
-				mock(CommandResult.class));
+		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class)))
+				.thenReturn(mock(CommandResult.class));
 		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
 		template.setReadPreference(ReadPreference.secondary());
 
@@ -383,8 +384,8 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 	@Test
 	public void aggregateShouldIgnoreReadPreferenceWhenNotSet() {
 
-		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class))).thenReturn(
-				mock(CommandResult.class));
+		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class)))
+				.thenReturn(mock(CommandResult.class));
 		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
 
 		template.aggregate(Aggregation.newAggregation(Aggregation.unwind("foo")), "collection-1", Wrapper.class);
@@ -398,8 +399,8 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 	@Test
 	public void geoNearShouldHonorReadPreferenceWhenSet() {
 
-		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class))).thenReturn(
-				mock(CommandResult.class));
+		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class)))
+				.thenReturn(mock(CommandResult.class));
 		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
 		template.setReadPreference(ReadPreference.secondary());
 
@@ -415,8 +416,8 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 	@Test
 	public void geoNearShouldIgnoreReadPreferenceWhenNotSet() {
 
-		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class))).thenReturn(
-				mock(CommandResult.class));
+		when(db.command(Mockito.any(DBObject.class), Mockito.any(ReadPreference.class)))
+				.thenReturn(mock(CommandResult.class));
 		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
 
 		NearQuery query = NearQuery.near(new Point(1, 1));
@@ -529,6 +530,120 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 		verify(collection).mapReduce(captor.capture());
 
 		assertThat(captor.getValue().getLimit(), is(1000));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldNotAppend$isolatedToNonMulitUpdate() {
+
+		template.updateFirst(new Query(), new Update().isolated().set("jon", "snow"), Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().notContaining("$isolated"));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldAppend$isolatedToUpdateMultiEmptyQuery() {
+
+		template.updateMulti(new Query(), new Update().isolated().set("jon", "snow"), Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().withSize(1).containing("$isolated", 1));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldAppend$isolatedToUpdateMultiQueryIfNotPresentAndUpdateSetsValue() {
+
+		Update update = new Update().isolated().set("jon", "snow");
+		Query query = new BasicQuery("{'eddard':'stark'}");
+
+		template.updateMulti(query, update, Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().containing("$isolated", 1).containing("eddard", "stark"));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldNotAppend$isolatedToUpdateMultiQueryIfNotPresentAndUpdateDoesNotSetValue() {
+
+		Update update = new Update().set("jon", "snow");
+		Query query = new BasicQuery("{'eddard':'stark'}");
+
+		template.updateMulti(query, update, Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().notContaining("$isolated").containing("eddard", "stark"));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldNotOverwrite$isolatedToUpdateMultiQueryIfPresentAndUpdateDoesNotSetValue() {
+
+		Update update = new Update().set("jon", "snow");
+		Query query = new BasicQuery("{'eddard':'stark', '$isolated' : 1}");
+
+		template.updateMulti(query, update, Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().containing("$isolated", 1).containing("eddard", "stark"));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
+	}
+
+	/**
+	 * @see DATAMONGO-1447
+	 */
+	@Test
+	public void shouldNotOverwrite$isolatedToUpdateMultiQueryIfPresentAndUpdateSetsValue() {
+
+		Update update = new Update().isolated().set("jon", "snow");
+		Query query = new BasicQuery("{'eddard':'stark', '$isolated' : 0}");
+
+		template.updateMulti(query, update, Wrapper.class);
+
+		ArgumentCaptor<DBObject> queryCaptor = ArgumentCaptor.forClass(DBObject.class);
+		ArgumentCaptor<DBObject> updateCaptor = ArgumentCaptor.forClass(DBObject.class);
+
+		verify(collection).update(queryCaptor.capture(), updateCaptor.capture(), anyBoolean(), anyBoolean());
+
+		assertThat(queryCaptor.getValue(), isBsonObject().containing("$isolated", 0).containing("eddard", "stark"));
+		assertThat(updateCaptor.getValue(), isBsonObject().containing("$set.jon", "snow").notContaining("$isolated"));
 	}
 
 	class AutogenerateableId {

@@ -20,7 +20,6 @@ import static org.springframework.util.ObjectUtils.*;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +50,7 @@ public class Update {
 		LAST, FIRST
 	}
 
+	private boolean isolated = false;
 	private Set<String> keysToUpdate = new HashSet<String>();
 	private Map<String, Object> modifierOps = new LinkedHashMap<String, Object>();
 	private Map<String, PushOperatorBuilder> pushCommandBuilders = new LinkedHashMap<String, PushOperatorBuilder>(1);
@@ -360,6 +360,28 @@ public class Update {
 	 */
 	public BitwiseOperatorBuilder bitwise(String key) {
 		return new BitwiseOperatorBuilder(this, key);
+	}
+
+	/**
+	 * Prevents a write operation that affects <strong>multiple</strong> documents from yielding to other reads or writes
+	 * once the first document is written. <br />
+	 * Use with {@link org.springframework.data.mongodb.core.MongoOperations#updateMulti(Query, Update, Class)}.
+	 *
+	 * @return never {@literal null}.
+	 * @since 1.10
+	 */
+	public Update isolated() {
+
+		isolated = true;
+		return this;
+	}
+
+	/**
+	 * @return {@literal true} if update isolated is set.
+	 * @since 1.10
+	 */
+	public Boolean isIsolated() {
+		return isolated;
 	}
 
 	public DBObject getUpdateObject() {
