@@ -58,7 +58,7 @@ import com.mongodb.WriteConcern;
 
 import lombok.Data;
 import reactor.core.publisher.Flux;
-import reactor.core.test.TestSubscriber;
+import reactor.test.TestSubscriber;
 
 /**
  * Integration test for {@link MongoTemplate}.

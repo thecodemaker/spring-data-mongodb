@@ -114,7 +114,7 @@ import com.mongodb.util.JSONParseException;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.tuple.Tuple2;
+import reactor.util.function.Tuple2;
 
 /**
  * Primary implementation of {@link ReactiveMongoOperations}.

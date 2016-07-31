@@ -41,7 +41,7 @@ import com.mongodb.ReadPreference;
 import com.mongodb.reactivestreams.client.MongoDatabase;
 
 import reactor.core.publisher.Flux;
-import reactor.core.test.TestSubscriber;
+import reactor.test.TestSubscriber;
 
 /**
  * Integration test for {@link ReactiveMongoTemplate} execute methods.
