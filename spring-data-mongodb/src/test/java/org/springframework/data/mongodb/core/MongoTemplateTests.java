@@ -42,6 +42,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -108,6 +109,8 @@ public class MongoTemplateTests {
 			.parse("2.4");
 
 	@Autowired MongoTemplate template;
+    @Autowired @Qualifier("mongoTemplateReadFromSecondary") MongoTemplate mongoTemplateReadFromSecondary;
+
 	@Autowired MongoDbFactory factory;
 
 	MongoTemplate mappingTemplate;
@@ -206,6 +209,20 @@ public class MongoTemplateTests {
 		List<Person> result = template.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
 		assertThat(result.size(), is(1));
 		assertThat(result, hasItem(person));
+	}
+
+	@Test
+	public void multipleTemplates() throws Exception {
+
+		Person person = new Person("Bogdan");
+		person.setAge(31);
+		template.insert(person);
+
+		template.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
+        assertThat(template.getDb().getReadPreference(),is(ReadPreference.PRIMARY));
+
+        mongoTemplateReadFromSecondary.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
+        assertThat(mongoTemplateReadFromSecondary.getDb().getReadPreference(),is(ReadPreference.SECONDARY));
 	}
 
 	@Test
