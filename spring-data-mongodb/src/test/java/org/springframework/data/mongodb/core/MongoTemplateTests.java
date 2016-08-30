@@ -92,7 +92,7 @@ import com.mongodb.WriteResult;
 
 /**
  * Integration test for {@link MongoTemplate}.
- * 
+ *
  * @author Oliver Gierke
  * @author Thomas Risberg
  * @author Amol Nayak
@@ -109,7 +109,7 @@ public class MongoTemplateTests {
 			.parse("2.4");
 
 	@Autowired MongoTemplate template;
-    @Autowired @Qualifier("mongoTemplateReadFromSecondary") MongoTemplate mongoTemplateReadFromSecondary;
+	@Autowired @Qualifier("mongoTemplateReadFromSecondary") MongoTemplate mongoTemplateReadFromSecondary;
 
 	@Autowired MongoDbFactory factory;
 
@@ -211,6 +211,9 @@ public class MongoTemplateTests {
 		assertThat(result, hasItem(person));
 	}
 
+	/**
+	 * @see DATAMONGO-1061
+	 */
 	@Test
 	public void multipleTemplates() throws Exception {
 
@@ -222,7 +225,7 @@ public class MongoTemplateTests {
 		assertThat(mongoTemplateReadFromSecondary.getDb().getCollection("person").getReadPreference(),is(ReadPreference.SECONDARY));
 
 		template.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
-        assertThat(template.getDb().getCollection("person").getReadPreference(), is(ReadPreference.PRIMARY));
+		assertThat(template.getDb().getCollection("person").getReadPreference(), is(ReadPreference.PRIMARY));
 	}
 
 	@Test
