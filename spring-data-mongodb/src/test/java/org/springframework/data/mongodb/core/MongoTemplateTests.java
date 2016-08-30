@@ -214,15 +214,15 @@ public class MongoTemplateTests {
 	@Test
 	public void multipleTemplates() throws Exception {
 
-		Person person = new Person("Bogdan");
+		Person person = new Person("Bogdan Apetrei");
 		person.setAge(31);
 		template.insert(person);
 
-		template.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
-        assertThat(template.getDb().getReadPreference(),is(ReadPreference.PRIMARY));
+		mongoTemplateReadFromSecondary.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
+		assertThat(mongoTemplateReadFromSecondary.getDb().getCollection("person").getReadPreference(),is(ReadPreference.SECONDARY));
 
-        mongoTemplateReadFromSecondary.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
-        assertThat(mongoTemplateReadFromSecondary.getDb().getReadPreference(),is(ReadPreference.SECONDARY));
+		template.find(new Query(Criteria.where("_id").is(person.getId())), Person.class);
+        assertThat(template.getDb().getCollection("person").getReadPreference(), is(ReadPreference.PRIMARY));
 	}
 
 	@Test
